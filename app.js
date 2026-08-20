@@ -3879,16 +3879,19 @@ function showEmailGateWelcome(fam,slot){
     .map(ev=>({name:ev.name,bal:Math.round(evAdjBalance(ev)[fam.id]||0)}))
     .filter(d=>Math.abs(d.bal)>0.5);
   const totalEvBal=evBals.reduce((s,d)=>s+d.bal,0);
+  const hasNews=fundBal!==0||evBals.length>0;
   el.innerHTML=`
     <div style="padding:26px 22px;text-align:center">
       <div style="font-size:34px;margin-bottom:8px">👋</div>
       <div style="font-size:16px;font-weight:700;margin-bottom:16px">ברוכים הבאים, ${esc(name)}!</div>
+      ${hasNews?`
+      ${fundBal!==0?`
       <div style="background:var(--surface2);border-radius:var(--r2);padding:12px 14px;margin-bottom:12px;text-align:right">
         <div style="display:flex;justify-content:space-between;align-items:center">
           <span style="font-size:13px;color:var(--text2)">יתרתך בארנק</span>
           <span style="font-size:14px;font-weight:700;color:${fundBal>=0?'var(--green-mid)':'var(--red-mid)'}">₪${fundBal.toLocaleString()}</span>
         </div>
-      </div>
+      </div>`:''}
       ${evBals.length?`
       <div style="background:${totalEvBal<-0.5?'var(--red-bg)':'var(--surface2)'};border-radius:var(--r2);padding:12px 14px;margin-bottom:16px;text-align:right">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -3901,8 +3904,8 @@ function showEmailGateWelcome(fam,slot){
             <span style="font-weight:700;color:${d.bal>=0?'var(--green-mid)':'var(--red-mid)'}">${d.bal>=0?'+':'-'}₪${Math.abs(d.bal).toLocaleString()}</span>
           </div>`).join('')}
         </div>
-      </div>`:`
-      <div style="background:var(--green-bg);border-radius:var(--r2);padding:10px 14px;margin-bottom:16px;font-size:13px;font-weight:700;color:var(--green-mid)">✅ מסודר בכל האירועים</div>`}
+      </div>`:''}
+      `:''}
       <button onclick="closeEmailGateModal()" style="width:100%;padding:12px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer;margin-bottom:8px">המשך לאפליקציה</button>
       <button onclick="resetDeviceIdentity()" style="width:100%;padding:6px;border:none;background:none;color:var(--text3);font-size:11px;font-family:var(--font);cursor:pointer;text-decoration:underline">לא אני? החלף מייל</button>
     </div>`;
