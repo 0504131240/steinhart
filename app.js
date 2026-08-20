@@ -2634,10 +2634,9 @@ function renderFamPeopleGrid(){
       <div style="font-size:11px;font-weight:600;color:${dashed?'var(--text3)':'var(--text)'};text-align:center;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)}</div>
     </div>`;
   };
-  const hasP2=!!(f.emailName2||f.email2||f.parent2Bday);
   const parentsHtml=`<div style="display:flex;gap:20px;justify-content:center;margin-bottom:18px">
     ${circle(0,f.emailName||'הורה 1','👤',"openPersonModal('p1')")}
-    ${hasP2?circle(1,f.emailName2||'הורה 2','👤',"openPersonModal('p2')"):circle(1,'הוסף הורה','+',"openPersonModal('p2')",true)}
+    ${f.parent2Removed?circle(1,'הוסף הורה','+',"openPersonModal('p2')",true):circle(1,f.emailName2||'הורה 2','👤',"openPersonModal('p2')")}
   </div>`;
   let kidsHtml=(f.kids||[]).map((k,i)=>{
     const icon=k.gender==='boy'?'👦':k.gender==='girl'?'👧':'👶';
@@ -2848,7 +2847,7 @@ function openPersonModal(mode,kidId){
     if(bday&&bday.hebDay&&bday.hebMonth&&bday.hebYear){_kidPickedDate={hebYear:bday.hebYear,hebMonth:bday.hebMonth,hebDay:bday.hebDay};_kidLegacyDate=null;}
     else if(bday&&bday.hebDay&&bday.hebMonth){_kidPickedDate=null;_kidLegacyDate={hebMonth:bday.hebMonth,hebDay:bday.hebDay};}
     else{_kidPickedDate=null;_kidLegacyDate=null;}
-    deleteBtn.style.display=(email||nameInp.value||bday)?'block':'none';
+    deleteBtn.style.display=isP1?((email||nameInp.value||bday)?'block':'none'):(f.parent2Removed?'none':'block');
   }else{
     emailWrap.style.display='none';
     genderWrap.style.display='flex';
@@ -2877,7 +2876,7 @@ function savePerson(){
     const isP1=_personMode==='p1';
     const email=_cleanEmail(document.getElementById('personEmail').value)||'';
     const prevEmail=isP1?f.email:f.email2;
-    if(isP1){f.email=email;f.emailName=name;}else{f.email2=email;f.emailName2=name;}
+    if(isP1){f.email=email;f.emailName=name;}else{f.email2=email;f.emailName2=name;f.parent2Removed=false;}
     if(prevEmail&&prevEmail!==email){
       const verified=new Set(JSON.parse(localStorage.getItem('verifiedEmails')||'[]'));
       verified.delete(prevEmail);
@@ -2903,9 +2902,9 @@ function savePerson(){
 function deletePerson(){
   const f=families.find(x=>x.id===_famEditId);if(!f)return;
   if(_personMode==='p1'||_personMode==='p2'){
-    if(!confirm('למחוק את פרטי ההורה?'))return;
     const isP1=_personMode==='p1';
-    if(isP1){f.email='';f.emailName='';delete f.parent1Bday;}else{f.email2='';f.emailName2='';delete f.parent2Bday;}
+    if(!confirm(isP1?'למחוק את פרטי ההורה?':'להסיר את ההורה השני לגמרי?'))return;
+    if(isP1){f.email='';f.emailName='';delete f.parent1Bday;}else{f.email2='';f.emailName2='';delete f.parent2Bday;f.parent2Removed=true;}
   }else{
     if(_personKidId==null)return;
     if(!confirm('למחוק ילד זה?'))return;
