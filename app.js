@@ -225,7 +225,7 @@ const firebaseConfig = {
 };
 
 let _fb=null,_fbApp=null;
-const FCM_VAPID_KEY='YOUR_WEB_PUSH_VAPID_KEY';
+const FCM_VAPID_KEY='BKzLGGmEwL9HbNfQhvMNTYzKW8_Hc_BrcYjjBUMQrCtr4iNfgMBsQcit2_8-34ytnuFDFeG4_67knacNt555vcc';
 async function fbInit(){
   if(_fb) return _fb;
   const appMod=await import("https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js");
