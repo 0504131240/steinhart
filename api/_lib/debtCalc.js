@@ -1,9 +1,9 @@
 // ⚠️ PORTED LOGIC — kept in sync with app.js by hand, on purpose.
 // evShares/evCost/evAdjBalance/famWeight below are copies of the same-named
 // functions in app.js. If the calculation logic changes there (split
-// methods, savings rounding, settled-entry matching, pot handling...),
-// update these too or the weekly debt email will quietly report the wrong
-// amount. (Same warning as the old functions/index.js this was ported from.)
+// methods, settled-entry matching, pot handling...), update these too or
+// the weekly debt email will quietly report the wrong amount. (Same
+// warning as the old functions/index.js this was ported from.)
 const FAM_ADULTS = 2;
 
 function famWeight(f, method, childOverride, parentOverride) {
@@ -18,7 +18,6 @@ function evPotExpTotal(ev) { return (ev.potExpItems || []).reduce((s, it) => s +
 function evCost(ev) {
   return (ev.totalCost != null ? ev.totalCost : ev.participants.reduce((s, fid) => s + (ev.expenses[fid] || 0), 0)) + evPotExpTotal(ev);
 }
-function evSavingsPerFam(ev) { return ev.savingsTotal ? Math.round(ev.savingsTotal / ((ev.participants || []).length || 1)) : 0; }
 function evShares(ev, families) {
   const getFam = id => families.find(f => f.id === id);
   const method = ev.splitMethod || 'equal';
@@ -46,15 +45,8 @@ function evShares(ev, families) {
   ev.participants.forEach(fid => { floors[fid] = Math.floor(exact[fid] || 0); });
   let remainder = Math.round(totalCost - ev.participants.reduce((s, fid) => s + floors[fid], 0));
   const sorted = [...ev.participants].sort((a, b) => ((exact[b] || 0) - floors[b]) - ((exact[a] || 0) - floors[a]));
-  const hasSavings = !!ev.savingsTotal;
   const shares = { ...floors };
-  if (hasSavings) {
-    ev.participants.forEach(fid => { shares[fid] = Math.ceil(exact[fid] || 0); });
-  } else {
-    for (let i = 0; i < remainder && i < sorted.length; i++) shares[sorted[i]]++;
-  }
-  const savingsPerFam = evSavingsPerFam(ev);
-  if (savingsPerFam > 0) ev.participants.forEach(fid => { shares[fid] = (shares[fid] || 0) + savingsPerFam; });
+  for (let i = 0; i < remainder && i < sorted.length; i++) shares[sorted[i]]++;
   return shares;
 }
 function evBalance(ev, families) {
@@ -73,7 +65,6 @@ function evAdjBalance(ev, families) {
     if (toFid != null) adjBal[toFid] = (adjBal[toFid] || 0) - s.amt;
   });
   (ev.potPayments || []).forEach(p => { adjBal[p.famId] = (adjBal[p.famId] || 0) + p.amt; });
-  (ev.savingsPaid || []).forEach(p => { adjBal[p.famId] = (adjBal[p.famId] || 0) + p.amt; });
   return adjBal;
 }
 
