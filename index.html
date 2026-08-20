@@ -1,0 +1,896 @@
+
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Steinhart">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0C447C">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.jpg">
+<title>Steinhart</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+</head>
+<body class="at-home">
+
+<!-- FAMILY HOME SHELL -->
+<div id="shell-home">
+  <div class="fh-hero">
+    <img src="logo.jpg" class="fh-hero-logo" alt="Steinhart">
+    <div class="fh-hero-content">
+      <div class="fh-hero-sub" id="fhSub"></div>
+    </div>
+  </div>
+
+  <!-- Summer Calendar link card -->
+  <a href="https://haketz-shel-yankelevitz.vercel.app/" target="_blank"
+     style="display:block;margin:14px 14px 6px;border-radius:16px;overflow:hidden;text-decoration:none;box-shadow:0 4px 20px rgba(247,151,30,0.3)">
+    <div style="background:linear-gradient(135deg,#FF6B6B,#f7971e,#ffd200,#43E97B,#4facfe);padding:20px 20px 18px;display:flex;align-items:center;gap:14px">
+      <div style="font-size:40px;line-height:1;flex-shrink:0">☀️</div>
+      <div>
+        <div style="font-size:17px;font-weight:800;color:#fff;margin-bottom:3px;text-shadow:0 1px 4px rgba(0,0,0,0.2)">הפנינג הקיץ של Steinhart</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.85);font-weight:600">לחץ לפתיחת לוח הקיץ ↗</div>
+      </div>
+    </div>
+  </a>
+
+  <!-- Lower section: buttons + calendar -->
+  <div class="fh-home-lower">
+    <!-- Pill buttons — above calendar on mobile, left on desktop -->
+    <div class="fh-pill-btns">
+      <!-- Countdown clocks — above the chat button, beside the calendar on desktop -->
+      <div id="countdownSection"></div>
+      <button class="fh-pill-btn" style="position:relative;background:linear-gradient(135deg,#FF6B9D,#FF4757);box-shadow:0 4px 22px rgba(255,71,87,0.35)" onclick="openChatSheet()">
+        <span class="fh-pill-ico">💬</span>צ'אט
+        <span id="chatUnreadBadge" style="display:none;position:absolute;top:8px;left:16px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#fff;color:#FF4757;font-size:12px;font-weight:800;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,0.25)"></span>
+      </button>
+      <button class="fh-pill-btn" style="background:linear-gradient(135deg,#43E97B,#0ABDE3);box-shadow:0 4px 22px rgba(67,233,123,0.35)" onclick="switchShell('pay')">
+        <span class="fh-pill-ico">💰</span>תשלומים
+      </button>
+      <button class="fh-pill-btn" id="pollBannerBtn" style="display:none;background:linear-gradient(135deg,#A78BFA,#7C3AED);box-shadow:0 4px 22px rgba(124,58,237,0.35)" onclick="openPollSheet()">
+        <span class="fh-pill-ico">🗳</span><span id="pollBannerLbl">סקר ממתין למילוי</span>
+      </button>
+    </div>
+    <!-- Family calendar card — below on mobile, right on desktop -->
+    <div class="fh-card fh-cal-card" style="margin:0">
+      <div class="fh-card-hdr fh-card-hdr-cal">
+        <span class="fh-card-title">📅 לוח משפחתי</span>
+      </div>
+      <div class="fh-cal-nav">
+        <button class="fh-cal-arrow" onclick="prevCalMonth()">›</button>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <span class="fh-cal-month" id="calTitle"></span>
+          <div style="display:flex;border:1.5px solid var(--border);border-radius:20px;overflow:hidden;font-size:10px;font-weight:700">
+            <button id="calToggleHeb" onclick="setCalMode(true)" style="padding:2px 9px;border:none;font-family:var(--font);cursor:pointer;font-size:10px;font-weight:700;transition:background .15s">עברי</button>
+            <button id="calToggleLat" onclick="setCalMode(false)" style="padding:2px 9px;border:none;font-family:var(--font);cursor:pointer;font-size:10px;font-weight:700;transition:background .15s">לועזי</button>
+          </div>
+        </div>
+        <button class="fh-cal-arrow" onclick="nextCalMonth()">‹</button>
+      </div>
+      <div class="fh-cal-grid" id="calGrid"></div>
+      <div class="fh-cal-evlist" id="calEvList"></div>
+      <div style="padding:0 14px 14px;display:flex;gap:8px;flex-wrap:wrap">
+        <button onclick="openCalModal()" style="flex:1;min-width:90px;padding:9px;border-radius:var(--r2);border:1.5px dashed #667eea;background:transparent;color:#667eea;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">+ אירוע</button>
+        <button onclick="openNewPollModal()" class="edit-only" style="flex:1;min-width:90px;padding:9px;border-radius:var(--r2);border:1.5px dashed #7C3AED;background:transparent;color:#7C3AED;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">🗳 צור סקר</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- New-device email gate -->
+<div id="emailGateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2700;align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
+  <div style="background:var(--surface);border-radius:var(--r);width:100%;max-width:340px;box-sizing:border-box" id="emailGateContent"></div>
+</div>
+
+<!-- Payment claim confirm modal (opened from an email link) -->
+<div id="claimConfirmModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2600;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeClaimConfirmModal()">
+  <div style="background:var(--surface);border-radius:var(--r);width:100%;max-width:340px;box-sizing:border-box" id="claimConfirmContent"></div>
+</div>
+
+<!-- Pending payment claims modal -->
+<div id="claimsModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2500;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeClaimsModal()">
+  <div style="background:var(--surface);border-radius:var(--r);width:100%;max-width:400px;max-height:80vh;overflow-y:auto;box-sizing:border-box">
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:15px;font-weight:700">💸 אישורי תשלום ממתינים</div>
+      <button onclick="closeClaimsModal()" style="border:none;background:none;font-size:20px;color:var(--text2);cursor:pointer;font-family:var(--font);padding:0">✕</button>
+    </div>
+    <div id="claimsModalContent"></div>
+  </div>
+</div>
+
+<!-- Calendar event modal -->
+<div id="calModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2500;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeCalModal()">
+  <div style="background:var(--surface);border-radius:var(--r);padding:20px;width:100%;max-width:340px;box-sizing:border-box">
+    <div style="font-size:15px;font-weight:700;margin-bottom:16px">📅 הוסף אירוע</div>
+    <div class="field" style="margin-bottom:10px">
+      <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">שם האירוע</label>
+      <input id="calAddTitle" placeholder="לדוגמה: יום הולדת, חתונה..." style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);direction:rtl;box-sizing:border-box">
+    </div>
+    <div class="field" style="margin-bottom:14px">
+      <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">תאריך</label>
+      <input id="calAddDate" type="date" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="addCalItem()" style="flex:1;padding:11px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer">הוסף</button>
+      <button onclick="closeCalModal()" style="flex:1;padding:11px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- Partial payment modal -->
+<div id="partPayModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:3000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closePartPayModal()">
+  <div style="background:var(--surface);border-radius:var(--r);padding:20px;width:100%;max-width:320px;box-sizing:border-box">
+    <div style="font-size:15px;font-weight:700;margin-bottom:6px">💳 רישום תשלום</div>
+    <div id="partPayInfo" style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6"></div>
+    <div class="field" style="margin-bottom:6px">
+      <label style="font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:5px">סכום ששולם (₪)</label>
+      <input id="partPayAmt" type="number" min="1" oninput="updatePartPayRemain()" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:20px;font-family:var(--font);background:var(--bg);color:var(--text);direction:ltr;box-sizing:border-box;font-weight:700;text-align:center">
+    </div>
+    <div id="partPayRemain" style="font-size:12px;margin-bottom:14px;text-align:center;min-height:18px;font-weight:600"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="confirmPartPay()" style="flex:1;padding:11px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer">אשר תשלום</button>
+      <button onclick="closePartPayModal()" style="flex:1;padding:11px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<div id="closeEvModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:3000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeCloseEvModal()">
+  <div style="background:var(--surface);border-radius:var(--r);padding:20px;width:100%;max-width:320px;box-sizing:border-box">
+    <div style="font-size:15px;font-weight:700;margin-bottom:10px">🏁 סיום אירוע</div>
+    <div id="closeEvInfo" style="font-size:13px;margin-bottom:14px;line-height:1.7"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="confirmCloseEv()" style="flex:1;padding:11px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer">סגור ושלח</button>
+      <button onclick="closeCloseEvModal()" style="flex:1;padding:11px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<div id="emailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:3000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeEmailModal()">
+  <div style="background:var(--surface);border-radius:var(--r);padding:20px;width:100%;max-width:340px;box-sizing:border-box;max-height:80vh;display:flex;flex-direction:column">
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">📧 שליחת מיילים</div>
+    <div id="emailModalContent" style="font-size:13px;line-height:1.7;overflow-y:auto;flex:1;margin-bottom:14px"></div>
+    <div style="flex-shrink:0">
+      <button onclick="closeEmailModal()" style="width:100%;padding:11px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer">סגור</button>
+    </div>
+  </div>
+</div>
+
+<div class="topbar">
+  <div>
+    <div class="topbar-title">👨‍👩‍👧‍👦 Steinhart</div>
+    <div class="topbar-sub" id="topSub">ניהול הוצאות וחובות</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-shrink:0">
+    <button class="btn-add" id="nb-notifcenter" onclick="openNotifCenter()" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);position:relative">🔔<span id="notifCenterBadge" style="display:none;position:absolute;top:-4px;left:-4px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:var(--red-mid,#d33);color:#fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;line-height:1"></span></button>
+    <button class="btn-add" id="nb-families" onclick="goTab('families',this)" style="background:var(--surface2);color:var(--text);border:1px solid var(--border)">👥</button>
+    <button class="btn-add edit-only" onclick="showForm()">+ אירוע חדש</button>
+  </div>
+</div>
+
+<div id="notifCenterModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2500;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeNotifCenter()">
+  <div style="background:var(--bg);border-radius:var(--r2);max-width:420px;width:100%;max-height:80vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <span style="font-size:15px;font-weight:800;color:var(--text)">🔔 מרכז התראות</span>
+      <button onclick="closeNotifCenter()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);line-height:1;padding:0">✕</button>
+    </div>
+    <div id="notifCenterList" style="flex:1;overflow-y:auto;padding:6px 16px"></div>
+  </div>
+</div>
+
+<div id="annualReportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2500;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeAnnualReport()">
+  <div style="background:var(--bg);border-radius:var(--r2);max-width:440px;width:100%;max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px">
+      <span style="font-size:15px;font-weight:800;color:var(--text);flex-shrink:0">📊 דוח שנתי</span>
+      <select id="reportYearSel" onchange="renderAnnualReport()" style="border:1.5px solid var(--border);border-radius:var(--r2);padding:5px 8px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text)"></select>
+      <button onclick="closeAnnualReport()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);line-height:1;padding:0">✕</button>
+    </div>
+    <div id="annualReportBody" style="flex:1;overflow-y:auto;padding:14px 16px"></div>
+  </div>
+</div>
+
+<div class="main">
+
+  <div id="claimsBanner" class="edit-only"></div>
+
+  <!-- HOME -->
+  <div class="view active" id="view-home">
+    <div id="homeBanner"></div>
+    <div id="homeFamStrip"></div>
+
+    <div id="homeGoalSection" style="display:none">
+      <div class="sec-ttl">🎯 קופות למטרה</div>
+      <div class="home-list" id="homeGoalList"></div>
+    </div>
+
+    <div id="homeEvSection"></div>
+  </div>
+
+  <!-- EVENTS -->
+  <div class="view" id="view-events">
+    <!-- New event form (hidden by default) -->
+    <div id="newFormOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)hideForm()">
+    <div class="new-form" id="newForm" style="width:100%;max-width:420px;max-height:90vh;overflow-y:auto;box-sizing:border-box">
+      <h2 id="formTitle">➕ אירוע חדש</h2>
+      <div class="field">
+        <label>שם האירוע *</label>
+        <input type="text" id="f-name" placeholder="מנגל, צימר, ארוחה...">
+        <div class="err-txt" id="e-name">נא להזין שם</div>
+      </div>
+      <div class="field">
+        <label>תאריך</label>
+        <input type="date" id="f-date">
+      </div>
+      <div class="field">
+        <label>משפחות משתתפות</label>
+        <button type="button" class="action-btn" style="width:100%;box-sizing:border-box" onclick="openFamPicker()">👥 <span id="famPickSummary">מי משתתף</span></button>
+        <div class="err-txt" id="e-fams">נא לבחור לפחות משפחה אחת</div>
+      </div>
+      <div class="field" id="splitMethodField">
+        <label>חלוקת ההוצאה</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button type="button" class="split-btn" id="splitEqual" onclick="setSplitMethod('equal')">שווה לכל משפחה</button>
+          <button type="button" class="split-btn" id="splitPercapita" onclick="setSplitMethod('percapita')">לפי נפשות</button>
+          <button type="button" class="split-btn" id="splitWeighted" onclick="setSplitMethod('weighted')">ילד = 50%</button>
+        </div>
+      </div>
+      <div class="field" id="childOverrideSection" style="display:none">
+        <label>הרכב משתתפים באירוע</label>
+        <button type="button" class="action-btn" style="width:100%;box-sizing:border-box" onclick="openChildOverridePicker()">👥 <span id="childPickSummary">הגדר הרכב לפי משפחה</span></button>
+      </div>
+      <div class="field" id="expensesSection" style="display:none">
+        <!-- Mode toggle -->
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+          <button id="modeTotal" onclick="setExpMode('total')" style="flex:1;padding:9px;border-radius:var(--r2);border:1.5px solid var(--blue-mid);background:var(--blue-mid);color:#fff;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">סכום כולל ÷ שווה</button>
+          <button id="modeCustom" onclick="setExpMode('custom')" style="flex:1;padding:9px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">כל משפחה בנפרד</button>
+          <button id="modeCumulative" onclick="setExpMode('cumulative')" style="flex:1;padding:9px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">מצטבר</button>
+        </div>
+        <!-- Cumulative mode notice -->
+        <div id="cumulativeModeDiv" style="display:none;text-align:center;font-size:13px;color:var(--text2);padding:10px 0;background:var(--blue-bg);border-radius:var(--r2)">הוצאות יוזנו ישירות באירוע לאחר יצירתו — לכל הוצאה תבחר בנפרד איך היא מתחלקת</div>
+        <!-- Total mode -->
+        <div id="totalModeDiv">
+          <div style="display:flex;gap:6px">
+            <input type="number" min="0" inputmode="numeric" id="f-total" placeholder="סכום כולל"
+              style="flex:1;min-width:0;border:1.5px solid var(--border);border-radius:var(--r2);padding:11px 12px;font-size:16px;font-family:var(--font);background:var(--bg);color:var(--text);direction:ltr;text-align:center"
+              oninput="updateTotalPreview();_updateCurHint('f-total','fTotalHint','fTotalCur')">
+            <select id="fTotalCur" onchange="updateTotalPreview();_updateCurHint('f-total','fTotalHint','fTotalCur')" style="border:1.5px solid var(--border);border-radius:var(--r2);padding:0 8px;font-size:15px;font-family:var(--font);background:var(--bg);color:var(--text);cursor:pointer"><option>₪</option><option>$</option><option>€</option><option>£</option></select>
+          </div>
+          <div id="fTotalHint" style="font-size:11px;color:var(--text2);text-align:center;margin-top:4px;min-height:14px"></div>
+          <div id="totalPreview" style="margin-top:6px"></div>
+        </div>
+        <!-- Custom mode -->
+        <div id="customModeDiv" style="display:none">
+          <button type="button" class="action-btn" style="width:100%;box-sizing:border-box" onclick="openExpensePicker()">💰 <span id="expensePickSummary">כמה כל משפחה שילמה</span></button>
+        </div>
+        <div class="err-txt" id="e-cost">נא להזין סכום</div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px">💎 תרומה לקופת חיסכון (אופציונלי)</label>
+          <input type="number" min="0" inputmode="numeric" id="f-savings" placeholder="₪ סכום כולל"
+            style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:15px;font-family:var(--font);background:var(--bg);color:var(--text);direction:ltr;text-align:center;box-sizing:border-box"
+            oninput="(()=>{const n=document.querySelectorAll('#famChips .chip.on').length;const v=parseFloat(this.value)||0;const el=document.getElementById('savingsHint');if(el)el.textContent=n>0&&v>0?'≈ ₪'+Math.round(v/n)+' לכל משפחה':'';})()" >
+          <div id="savingsHint" style="font-size:11px;color:var(--text2);text-align:center;margin-top:4px;min-height:14px"></div>
+        </div>
+      </div>
+      <div class="form-btns">
+        <button class="save-btn" id="formSaveBtn" onclick="doCreate()">✓ צור אירוע</button>
+        <button onclick="hideForm()">ביטול</button>
+      </div>
+    </div>
+    </div>
+
+    <!-- Family picker modal -->
+    <div id="famPickOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1100;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeFamPicker()">
+      <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:16px;width:100%;max-width:380px;max-height:80vh;overflow-y:auto;box-sizing:border-box">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px">מי משתתף באירוע</div>
+        <div class="chips" id="famChips"></div>
+        <div class="form-btns">
+          <button class="save-btn" onclick="closeFamPicker()">✓ אישור</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Child override picker modal -->
+    <div id="childOverrideOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1200;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeChildOverridePicker()">
+      <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:16px;width:100%;max-width:380px;max-height:80vh;overflow-y:auto;box-sizing:border-box">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px">הרכב משתתפים לפי משפחה</div>
+        <div id="childOverrideInputs"></div>
+        <div class="form-btns">
+          <button class="save-btn" onclick="closeChildOverridePicker()">✓ אישור</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expense picker modal -->
+    <div id="expenseOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1200;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeExpensePicker()">
+      <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:16px;width:100%;max-width:380px;max-height:80vh;overflow-y:auto;box-sizing:border-box">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:14px;font-weight:700">כמה כל משפחה שילמה</div>
+          <select id="customCur" onchange="_updateCustomTotal()" style="border:1.5px solid var(--border);border-radius:var(--r2);padding:6px 8px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);cursor:pointer"><option>₪</option><option>$</option><option>€</option><option>£</option></select>
+        </div>
+        <div id="expenseInputs"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:8px 0;border-top:1px solid var(--border)">
+          <span style="font-size:12px;font-weight:700;color:var(--text2)">סה"כ</span>
+          <span style="font-size:16px;font-weight:700;color:var(--blue-mid)" id="formTotalCost">₪0</span>
+        </div>
+        <div class="form-btns">
+          <button class="save-btn" onclick="closeExpensePicker()">✓ אישור</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="metrics" id="metrics"></div>
+    <div class="sec-ttl">אירועים פעילים</div>
+    <div id="openList"></div>
+    <button onclick="goTab('archive',null)" style="width:100%;margin-top:10px;padding:12px;border-radius:var(--r2);border:1.5px solid var(--border);background:var(--surface);color:var(--text2);font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">🗂️ ארכיון אירועים</button>
+  </div>
+
+  <!-- ARCHIVE -->
+  <div class="view" id="view-archive">
+    <div class="year-row" id="yearRow"></div>
+    <div id="archList"></div>
+    <div id="archGoalList"></div>
+  </div>
+
+
+  <!-- FAMILIES -->
+  <div class="view" id="view-families">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div class="sec-ttl" style="margin:0">ניהול משפחות</div>
+      <button onclick="openAnnualReport()" style="padding:7px 12px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;white-space:nowrap;margin-bottom:10px">📊 דוח שנתי</button>
+    </div>
+    <div class="fam-add edit-only">
+      <input type="text" id="famInput" placeholder="שם משפחה חדשה...">
+      <button class="action-btn blue" onclick="addFam()">הוסף</button>
+    </div>
+    <div id="famList"></div>
+    <div class="sec-ttl edit-only" style="margin-top:20px">⚙️ הגדרות התראות מייל</div>
+    <div class="edit-only" id="emailjsSettings" style="background:var(--surface2);border-radius:var(--r2);padding:14px;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">
+        כדי לשלוח מיילים: צור חשבון ב-<b>emailjs.com</b> → צור שירות + תבנית עם משתנים <b>to_email, to_name, subject, message_html</b> (בגוף המייל השתמש ב-<b>{{{message_html}}}</b>) → הדבק כאן את הפרטים.
+      </div>
+      <input type="text" id="ejsPublicKey" placeholder="Public Key" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:8px 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;margin-bottom:6px;direction:ltr">
+      <input type="text" id="ejsServiceId" placeholder="Service ID" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:8px 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;margin-bottom:6px;direction:ltr">
+      <input type="text" id="ejsTemplateId" placeholder="Template ID" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:8px 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;margin-bottom:6px;direction:ltr">
+      <div style="display:flex;gap:8px">
+        <button onclick="saveEjsSettings()" style="flex:1;padding:9px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">✓ שמור הגדרות</button>
+        <button onclick="testEjsEmail()" style="padding:9px 12px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">📧 בדוק</button>
+      </div>
+      <div id="ejsStatus" style="font-size:12px;margin-top:8px;text-align:center"></div>
+    </div>
+    <div class="sec-ttl edit-only" style="margin-top:20px">💳 פרטי תשלום לגזבר</div>
+    <div class="edit-only" style="background:var(--surface2);border-radius:var(--r2);padding:14px;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">פרטים אלו יופיעו בכל מייל תזכורת חוב כדי שהמשפחות ידעו לאן להעביר את הכסף.</div>
+      <input type="text" id="payTreasurerName" placeholder="שם הגזבר (לדוגמה: יוסי Steinhart)"
+        style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:8px 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;margin-bottom:6px">
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <input type="text" id="payBankName" placeholder="שם בנק (לדוגמה: הפועלים)"
+          style="flex:1;border:1.5px solid var(--border);border-radius:var(--r2);padding:8px 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box">
+        <input type="text" id="payBranch" placeholder="סניף" inputmode="numeric"
+          style="width:80px;border:1.5px solid var(--border);border-radius:var(--r2);padding:8px 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;direction:ltr;text-align:center">
+      </div>
+      <input type="text" id="payAccount" placeholder="מספר חשבון" inputmode="numeric"
+        style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:8px 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;margin-bottom:6px;direction:ltr;text-align:right">
+      <input type="url" id="payBitLink" placeholder="קישור ביט לתשלום (https://www.bitpay.co.il/app/me/...)"
+        style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:8px 10px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;margin-bottom:8px;direction:ltr;text-align:right">
+      <button onclick="savePaymentSettings()" style="width:100%;padding:9px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">✓ שמור פרטי תשלום</button>
+      <div id="payStatus" style="font-size:12px;margin-top:8px;text-align:center"></div>
+    </div>
+    <div class="sec-ttl edit-only" style="margin-top:20px">📢 שליחת הודעה לכולם</div>
+    <div class="edit-only" style="background:var(--surface2);border-radius:var(--r2);padding:14px;margin-bottom:12px">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.5">שולח מייל לכל המשפחות שיש להן כתובת מייל שמורה.</div>
+      <button onclick="openBroadcastModal()" style="width:100%;padding:9px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">✏️ נסח ושלח הודעה</button>
+    </div>
+    <div id="visitLogSection"></div>
+  </div>
+
+  <!-- FUND -->
+  <div class="view" id="view-fund">
+
+    <!-- Grand total summary card -->
+    <div id="grandTotalCard" style="background:var(--text);border-radius:var(--r);padding:20px 20px 16px;margin-bottom:14px">
+      <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:6px;text-align:center;letter-spacing:.5px">סך כל הקופות</div>
+      <div id="grandTotalAmt" style="font-size:38px;font-weight:800;color:#fff;letter-spacing:-1px;text-align:center;margin-bottom:12px">₪0</div>
+      <div id="grandTotalBreakdown" style="display:flex;justify-content:center;gap:16px;border-top:1px solid rgba(255,255,255,0.15);padding-top:10px"></div>
+    </div>
+
+    <!-- Main fund card with family balances inside -->
+    <div class="fund-section-title">💰 ארנק</div>
+    <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:18px 16px 14px;margin-bottom:8px">
+      <div style="text-align:center;margin-bottom:4px">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:2px">יתרה</div>
+        <div id="fundBalAmt" style="font-size:32px;font-weight:800;color:var(--text);letter-spacing:-0.5px">₪0</div>
+      </div>
+      <div id="fundFamSummary" style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px"></div>
+    </div>
+
+    <!-- Action buttons -->
+    <div style="display:flex;gap:8px;margin-bottom:18px;justify-content:flex-end" class="edit-only">
+      <button onclick="openDepositSheet('withdraw')" style="padding:7px 16px;border-radius:20px;border:1.5px solid var(--red-mid);background:transparent;color:var(--red-mid);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer">↑ משיכה</button>
+      <button onclick="openDepositSheet('deposit')" style="padding:7px 16px;border-radius:20px;border:none;background:var(--blue-mid);color:#fff;font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer">↓ הפקדה</button>
+    </div>
+
+    <!-- Event pots section -->
+    <div id="eventPotsSection" style="margin-bottom:18px"></div>
+
+    <!-- Savings pot section -->
+    <div id="savingsPotSection" style="margin-bottom:18px"></div>
+
+    <!-- Deposit/Withdraw modal -->
+    <div id="depositOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeDepositSheet()">
+      <div id="depositSheet" style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:16px;width:100%;max-width:360px;max-height:85vh;overflow-y:auto;box-sizing:border-box">
+        <div id="depositTitle" style="font-size:14px;font-weight:700;margin-bottom:12px">הפקדה לקופה</div>
+        <div id="depositFields"></div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button class="fund-dep-btn" style="flex:1;padding:12px" onclick="confirmDeposit()">✓ אשר הפקדה</button>
+          <button onclick="closeDepositSheet()" style="flex:1;padding:12px;border-radius:var(--r2);border:1px solid var(--border);background:transparent;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;color:var(--text)">ביטול</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Goal funds -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;margin-top:18px">
+      <div class="fund-section-title" style="margin-bottom:0">🎯 קופות למטרה</div>
+      <button class="fund-dep-btn edit-only" onclick="openGoalForm()">+ קופה חדשה</button>
+    </div>
+
+    <!-- New goal fund modal -->
+    <div id="goalFormOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeGoalForm()">
+      <div id="goalFormSheet" style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:16px;width:100%;max-width:360px;box-sizing:border-box">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px">קופה חדשה למטרה</div>
+        <input type="text" id="goalName" placeholder="שם הקופה (לדוגמה: מתנה לסבא)"
+          style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);margin-bottom:8px;box-sizing:border-box">
+        <input type="number" min="0" inputmode="numeric" id="goalTarget" placeholder="סכום מטרה - אופציונלי (₪)"
+          style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);direction:ltr;text-align:center;box-sizing:border-box">
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button class="fund-dep-btn" style="flex:1;padding:12px" onclick="addGoalFund()">✓ צור קופה</button>
+          <button onclick="closeGoalForm()" style="flex:1;padding:12px;border-radius:var(--r2);border:1px solid var(--border);background:transparent;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;color:var(--text)">ביטול</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="goalFundsList" style="margin-bottom:14px"></div>
+
+    <!-- Goal deposit modal -->
+    <div id="goalDepositOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeGoalDepositSheet()">
+      <div id="goalDepositSheet" style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:16px;width:100%;max-width:360px;max-height:85vh;overflow-y:auto;box-sizing:border-box">
+        <div id="goalDepositTitle" style="font-size:14px;font-weight:700;margin-bottom:12px">הפקדה לקופת מטרה</div>
+        <div id="goalDepositFields"></div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button class="fund-dep-btn" style="flex:1;padding:12px" onclick="confirmGoalDeposit()">✓ אשר הפקדה</button>
+          <button onclick="closeGoalDepositSheet()" style="flex:1;padding:12px;border-radius:var(--r2);border:1px solid var(--border);background:transparent;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;color:var(--text)">ביטול</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px">
+      <button onclick="toggleFundTx()" id="fundTxToggle" style="width:100%;padding:11px 14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;text-align:right;display:flex;align-items:center;justify-content:space-between">
+        <span>📋 היסטוריית תנועות</span><span id="fundTxArrow">▼</span>
+      </button>
+      <div id="fundTxList" style="display:none"></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="famDetailOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeFamDetail()">
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:18px;width:100%;max-width:380px;box-sizing:border-box;max-height:85vh;overflow-y:auto">
+    <div id="famDetailContent"></div>
+    <button onclick="closeFamDetail()" style="width:100%;margin-top:14px;padding:12px;border-radius:var(--r2);border:1px solid var(--border);background:transparent;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;color:var(--text)">סגור</button>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="nb-home" onclick="goTab('home',this)">
+    <span class="nav-in"><span class="nav-icon">🏠</span>בית</span>
+  </button>
+  <button class="nav-btn" id="nb-events" onclick="goTab('events',this)">
+    <span class="nav-in"><span class="nav-icon">📅</span>אירועים</span>
+  </button>
+  <button class="nav-btn" id="nb-fund" onclick="goTab('fund',this)">
+    <span class="nav-in"><span class="nav-icon">🏦</span>קופה</span>
+  </button>
+</nav>
+
+<!-- MAIN SHELL NAV -->
+<div id="main-nav">
+  <button id="mn-home" class="mn-btn mn-active" onclick="switchShell('home')">
+    <span class="mn-in"><span class="mn-ico">🏠</span>בית</span>
+  </button>
+  <button id="mn-pay" class="mn-btn" onclick="switchShell('pay')">
+    <span class="mn-in"><span class="mn-ico">💰</span>תשלומים</span>
+  </button>
+</div>
+
+<!-- Chat bottom sheet -->
+<div id="chatSheet">
+  <div id="chatSheetBg" onclick="closeChatSheet()"></div>
+  <div id="chatSheetInner">
+    <div style="padding:14px 16px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <button onclick="closeChatSheet()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);line-height:1;padding:0">✕</button>
+      <span style="font-size:15px;font-weight:800;color:var(--text)">💬 צ'אט משפחתי</span>
+      <button id="notifBtn" style="background:none;border:none;font-size:20px;cursor:pointer;padding:0 2px;opacity:.7;line-height:1;color:var(--text2)">🔕</button>
+    </div>
+    <div class="msg-list" id="msgList" style="flex:1;overflow-y:auto;padding:10px 14px 6px;min-height:0"></div>
+    <div id="chatInputArea" style="padding:8px 12px 16px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px;flex-shrink:0"></div>
+  </div>
+</div>
+
+<!-- Poll bottom sheet -->
+<div id="pollSheet">
+  <div id="pollSheetBg" onclick="closePollSheet()"></div>
+  <div id="pollSheetInner">
+    <div style="padding:14px 16px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <button onclick="closePollSheet()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);line-height:1;padding:0">✕</button>
+      <span style="font-size:15px;font-weight:800;color:var(--text)">🗳 סקרים</span>
+      <button class="edit-only" onclick="openNewPollModal()" style="background:none;border:none;font-size:22px;cursor:pointer;padding:0 2px;color:#7C3AED;line-height:1">+</button>
+    </div>
+    <div id="pollList" style="flex:1;overflow-y:auto;padding:10px 14px 16px;min-height:0"></div>
+  </div>
+</div>
+
+<!-- New poll modal -->
+<div id="newPollModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2600;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeNewPollModal()">
+  <div style="background:var(--bg);border-radius:var(--r2);max-width:380px;width:100%;max-height:85vh;overflow-y:auto;padding:18px">
+    <div style="font-size:15px;font-weight:800;margin-bottom:12px">🗳 סקר חדש</div>
+    <input type="text" id="pollQ" placeholder="השאלה שלך" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:9px 10px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;margin-bottom:10px">
+    <div id="pollOptsWrap"></div>
+    <button onclick="addPollOptInput()" style="width:100%;padding:7px;border-radius:var(--r2);border:1.5px dashed var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:600;font-family:var(--font);cursor:pointer;margin-bottom:12px">➕ הוסף אפשרות</button>
+    <div id="pollErr" style="display:none;color:var(--red-mid,#c33);font-size:12px;margin-bottom:8px">נא למלא שאלה ולפחות 2 אפשרויות</div>
+    <div style="display:flex;gap:8px">
+      <button onclick="closeNewPollModal()" style="flex:1;padding:10px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">ביטול</button>
+      <button onclick="saveNewPoll()" style="flex:1;padding:10px;border-radius:var(--r2);border:none;background:#7C3AED;color:#fff;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">✓ צור סקר</button>
+    </div>
+  </div>
+</div>
+
+
+<script src="app.js"></script>
+
+<!-- Add expense item modal (cumulative events) -->
+<div id="addExpItemOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1500;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeAddExpItem()">
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:16px;width:100%;max-width:360px;max-height:85vh;overflow-y:auto;box-sizing:border-box">
+    <div id="addExpItemTitle" style="font-size:14px;font-weight:700;margin-bottom:14px">➕ הוסף הוצאה</div>
+    <div class="field">
+      <label class="field-lbl">שם ההוצאה</label>
+      <input type="text" id="expItemName" placeholder="לדוגמה: ארוחת ערב, כרטיסים..." style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:15px;font-family:var(--font);background:var(--bg);color:var(--text);direction:rtl;box-sizing:border-box">
+    </div>
+    <div id="expFromPotToggleWrap" style="display:none;margin-top:10px">
+      <button id="expFromPotToggle" onclick="toggleExpFromPot()" style="width:100%;padding:9px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">🛒 הוצאה מהקופה</button>
+    </div>
+    <div id="expItemFamSection">
+      <div class="field" style="margin-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+          <label class="field-lbl" style="margin-bottom:0">מי שילם</label>
+          <div style="display:flex;gap:4px">
+            <button type="button" id="expPaySingleBtn" onclick="setExpItemPayMode('single')" style="padding:3px 9px;border-radius:20px;border:1.5px solid var(--blue-mid);background:var(--blue-mid);color:#fff;font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer">משלם אחד</button>
+            <button type="button" id="expPayMultiBtn" onclick="setExpItemPayMode('multi')" style="padding:3px 9px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer">כמה משלמים</button>
+          </div>
+        </div>
+        <div id="expItemFamPicker" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
+        <div id="expItemPayMultiWrap" style="display:none;margin-top:6px">
+          <div id="expItemPayMultiInputs"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border);margin-top:4px">
+            <span style="font-size:12px;font-weight:700;color:var(--text2)">סה"כ ששולם</span>
+            <span style="font-size:15px;font-weight:700;color:var(--blue-mid)" id="expItemPayTotal">₪0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="expItemSplitSection">
+      <div class="field" style="margin-top:12px">
+        <label class="field-lbl">חלוקת הסכום</label>
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+          <button type="button" id="expSplitEqualBtn" onclick="setExpItemMethod('equal')" style="flex:1;min-width:64px;padding:8px 6px;border-radius:var(--r2);border:1.5px solid var(--blue-mid);background:var(--blue-mid);color:#fff;font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer">שווה</button>
+          <button type="button" id="expSplitPercapitaBtn" onclick="setExpItemMethod('percapita')" style="flex:1;min-width:64px;padding:8px 6px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer">לפי נפשות</button>
+          <button type="button" id="expSplitWeightedBtn" onclick="setExpItemMethod('weighted')" style="flex:1;min-width:64px;padding:8px 6px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer">ילד = 50%</button>
+          <button type="button" id="expSplitCustomBtn" onclick="setExpItemSplitMode('custom')" style="flex:1;min-width:90px;padding:8px 6px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer">ידנית לכל משפחה</button>
+        </div>
+      </div>
+    </div>
+    <div id="expItemSplitEqualDiv">
+      <div id="expItemSharePickerWrap" class="field" style="margin-top:12px">
+        <label class="field-lbl">מי משתתף בחלוקה</label>
+        <div id="expItemSharePicker" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
+      </div>
+      <div id="expItemAmtField" class="field" style="margin-top:12px">
+        <label class="field-lbl">סכום</label>
+        <div style="display:flex;gap:6px">
+          <input type="number" min="0" inputmode="numeric" id="expItemAmt" placeholder="0" oninput="_updateCurHint('expItemAmt','expItemCurHint','expItemCur')" style="flex:1;min-width:0;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:16px;font-family:var(--font);background:var(--bg);color:var(--text);direction:ltr;text-align:center;box-sizing:border-box">
+          <select id="expItemCur" onchange="_updateCurHint('expItemAmt','expItemCurHint','expItemCur')" style="border:1.5px solid var(--border);border-radius:var(--r2);padding:0 8px;font-size:15px;font-family:var(--font);background:var(--bg);color:var(--text);cursor:pointer"><option>₪</option><option>$</option><option>€</option><option>£</option></select>
+        </div>
+        <div id="expItemCurHint" style="font-size:11px;color:var(--text2);text-align:center;margin-top:4px;min-height:14px"></div>
+      </div>
+      <div id="expItemAmtFromPayNote" style="display:none;margin-top:12px;font-size:12px;color:var(--text2);background:var(--surface2);border-radius:var(--r2);padding:9px 12px;text-align:center"></div>
+    </div>
+    <div id="expItemSplitCustomDiv" style="display:none">
+      <div class="field" style="margin-top:12px">
+        <label class="field-lbl">כמה כל משפחה חייבת</label>
+        <div id="expItemCustomInputs" style="margin-top:8px"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--border);margin-top:4px">
+          <span style="font-size:12px;font-weight:700;color:var(--text2)">סה"כ לתשלום</span>
+          <span style="font-size:15px;font-weight:700;color:var(--blue-mid)" id="expItemCustomTotal">₪0</span>
+        </div>
+      </div>
+    </div>
+    <div id="expItemErr" style="display:none;font-size:12px;color:var(--red);margin-top:8px;text-align:center">נא למלא שם, לבחור משפחה וסכום</div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="doAddExpItem()" style="flex:1;padding:12px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer">✓ הוסף</button>
+      <button onclick="closeAddExpItem()" style="padding:12px 16px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cumulative event pot deposit modal -->
+<div id="cumPotOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1500;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeCumPot()">
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:16px;width:100%;max-width:360px;box-sizing:border-box">
+    <div style="font-size:14px;font-weight:700;margin-bottom:14px">💰 הפקדה לקופת האירוע</div>
+    <div class="field">
+      <label class="field-lbl">מי מפקיד</label>
+      <div id="cumPotFamPicker" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
+    </div>
+    <div class="field" style="margin-top:12px">
+      <label class="field-lbl">סכום (₪)</label>
+      <input type="number" min="0" inputmode="numeric" id="cumPotAmt" placeholder="0" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:16px;font-family:var(--font);background:var(--bg);color:var(--text);direction:ltr;text-align:center;box-sizing:border-box">
+    </div>
+    <div id="cumPotFundLine" style="display:none;margin-top:10px;background:var(--blue-bg);border:1px solid var(--blue-mid);border-radius:var(--r2);padding:9px 12px;display:none;align-items:center;gap:8px">
+      <span id="cumPotFundText" style="flex:1;font-size:12px;color:var(--blue)"></span>
+      <button onclick="useFundForCumPot()" style="padding:5px 10px;border-radius:20px;border:none;background:var(--blue-mid);color:#fff;font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;white-space:nowrap">🏦 העבר מהארנק</button>
+    </div>
+    <div id="cumPotErr" style="display:none;font-size:12px;color:var(--red);margin-top:8px;text-align:center">נא לבחור משפחה ולהזין סכום</div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="doDepositToCumPot()" style="flex:1;padding:12px;border-radius:var(--r2);border:none;background:var(--amber-mid);color:#fff;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer">✓ הפקד</button>
+      <button onclick="closeCumPot()" style="padding:12px 16px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- Photo reposition modal -->
+<div id="photoReposModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:2500;align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
+  <div style="background:var(--surface);border-radius:var(--r);padding:22px 20px 18px;width:100%;max-width:300px;text-align:center;box-sizing:border-box">
+    <div style="font-size:14px;font-weight:700;margin-bottom:4px">מרכז את התמונה</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:14px">גרור לשינוי מיקום · גלגל עכבר / צביטה להגדלה</div>
+    <div id="photoReposCircle" style="width:200px;height:200px;border-radius:50%;overflow:hidden;margin:0 auto 14px;cursor:grab;position:relative;border:3px solid var(--blue-mid);touch-action:none;background:var(--surface2)">
+      <img id="photoReposImg" style="position:absolute;top:0;left:0;user-select:none;-webkit-user-drag:none" draggable="false" alt="">
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px">
+      <button onclick="updateReposZoom(_reposZoom*0.85)" style="width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:20px;line-height:1;cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center">−</button>
+      <span id="reposZoomLbl" style="font-size:12px;font-weight:700;color:var(--text2);min-width:38px;text-align:center">100%</span>
+      <button onclick="updateReposZoom(_reposZoom*1.18)" style="width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border);background:var(--surface2);color:var(--text);font-size:20px;line-height:1;cursor:pointer;font-family:var(--font);display:flex;align-items:center;justify-content:center">+</button>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button onclick="confirmPhotoRepos()" style="flex:1;padding:11px;border-radius:var(--r2);border:none;background:var(--text);color:#fff;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">✓ אשר</button>
+      <button onclick="closePhotoRepos()" style="flex:1;padding:11px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lock modal -->
+<div id="lockModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeLockModal()">
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:20px;width:100%;max-width:340px;box-sizing:border-box">
+    <div id="lockModalContent"></div>
+  </div>
+</div>
+
+
+<!-- Settle transfers modal -->
+<div id="settleModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1500;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeSettleModal()">
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);width:100%;max-width:440px;max-height:85vh;overflow-y:auto;box-sizing:border-box">
+    <div id="settleModalContent"></div>
+  </div>
+</div>
+
+<!-- Event dashboard modal -->
+<div id="eventDashModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1500;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeEventDash()">
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);width:100%;max-width:780px;max-height:92vh;overflow-y:auto;box-sizing:border-box">
+    <div id="eventDashContent"></div>
+  </div>
+</div>
+
+<!-- Per-family detail popup -->
+<div id="famExpModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1600;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeEventFamDetail()">
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);width:100%;max-width:400px;max-height:88vh;overflow-y:auto;box-sizing:border-box">
+    <div id="famExpModalContent"></div>
+  </div>
+</div>
+
+<!-- Pot modal -->
+<div id="potModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1500;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closePotModal()">
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);width:100%;max-width:440px;max-height:85vh;overflow-y:auto;box-sizing:border-box">
+    <div id="potModalContent"></div>
+  </div>
+</div>
+
+<!-- Pot transfer modal -->
+<div id="potTrModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1600;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closePotTransferModal()">
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);width:100%;max-width:420px;max-height:85vh;overflow-y:auto;box-sizing:border-box">
+    <div id="potTrModalContent"></div>
+  </div>
+</div>
+
+<!-- Broadcast email modal -->
+<div id="broadcastModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2700;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeBroadcastModal()">
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:16px;width:100%;max-width:380px;max-height:85vh;overflow-y:auto;box-sizing:border-box">
+    <div style="font-size:15px;font-weight:700;margin-bottom:12px">📢 הודעה לכל המשפחות</div>
+    <div id="broadcastHint" style="font-size:12px;color:var(--text2);margin-bottom:10px"></div>
+    <div class="field">
+      <label class="field-lbl">נושא</label>
+      <input type="text" id="broadcastSubject" placeholder="לדוגמה: עדכון לגבי הטיול הקרוב" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);direction:rtl;box-sizing:border-box">
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label class="field-lbl">תוכן ההודעה</label>
+      <textarea id="broadcastMsg" rows="6" placeholder="כתבו כאן את ההודעה..." style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);direction:rtl;box-sizing:border-box;resize:vertical"></textarea>
+    </div>
+    <div id="broadcastErr" style="display:none;font-size:12px;color:var(--red);margin-top:8px;text-align:center"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button onclick="sendBroadcastEmail()" style="flex:1;padding:12px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer">📧 שלח לכולם</button>
+      <button onclick="closeBroadcastModal()" style="padding:12px 16px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- New/edit countdown modal -->
+<div id="countdownModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2700;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeCountdownModal()">
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:16px;width:100%;max-width:340px;max-height:88vh;overflow-y:auto;box-sizing:border-box">
+    <div id="countdownModalTitle" style="font-size:15px;font-weight:700;margin-bottom:12px">⏱ שעון ספירה לאחור חדש</div>
+    <div style="display:flex;justify-content:center;margin-bottom:14px">
+      <div id="countdownPreviewCard" style="width:140px"></div>
+    </div>
+    <div class="field">
+      <label class="field-lbl">כיתוב</label>
+      <input type="text" id="countdownTitle" placeholder="לדוגמה: לחתונה של דנה" oninput="updateCountdownPreview()" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);direction:rtl;box-sizing:border-box">
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label class="field-lbl">עד לתאריך</label>
+      <div style="display:flex;gap:8px">
+        <input type="date" id="countdownDate" oninput="updateCountdownPreview()" style="flex:1.4;min-width:0;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box">
+        <input type="time" id="countdownTime" value="00:00" oninput="updateCountdownPreview()" style="flex:1;min-width:0;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box">
+      </div>
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label class="field-lbl">עיצוב הכרטיס</label>
+      <div style="display:flex;gap:8px">
+        <div style="flex:1;text-align:center">
+          <input type="color" id="countdownBg1" value="#667eea" oninput="updateCountdownPreview()" style="width:100%;height:34px;border:1.5px solid var(--border);border-radius:var(--r2);padding:2px;background:var(--bg);cursor:pointer">
+          <div style="font-size:10px;color:var(--text2);margin-top:3px">רקע 1</div>
+        </div>
+        <div style="flex:1;text-align:center">
+          <input type="color" id="countdownBg2" value="#764ba2" oninput="updateCountdownPreview()" style="width:100%;height:34px;border:1.5px solid var(--border);border-radius:var(--r2);padding:2px;background:var(--bg);cursor:pointer">
+          <div style="font-size:10px;color:var(--text2);margin-top:3px">רקע 2</div>
+        </div>
+        <div style="flex:1;text-align:center">
+          <input type="color" id="countdownTextColor" value="#ffffff" oninput="updateCountdownPreview()" style="width:100%;height:34px;border:1.5px solid var(--border);border-radius:var(--r2);padding:2px;background:var(--bg);cursor:pointer">
+          <div style="font-size:10px;color:var(--text2);margin-top:3px">צבע כיתוב</div>
+        </div>
+      </div>
+    </div>
+    <div class="field" style="margin-top:10px">
+      <label class="field-lbl">אימוג'י (אופציונלי)</label>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="text" id="countdownEmoji" maxlength="4" placeholder="🎉" oninput="updateCountdownPreview()" style="width:52px;text-align:center;font-size:20px;border:1.5px solid var(--border);border-radius:var(--r2);padding:6px 4px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box">
+        <div style="display:flex;align-items:center;border:1.5px solid var(--border);border-radius:var(--r2);overflow:hidden;flex-shrink:0">
+          <button type="button" onclick="stepCountdownEmojiSize(-4)" style="width:30px;height:32px;border:none;background:var(--bg);color:var(--text);font-size:16px;cursor:pointer;font-family:var(--font)">−</button>
+          <span id="countdownEmojiSizeLbl" style="width:38px;text-align:center;font-size:11px;color:var(--text2)">32px</span>
+          <button type="button" onclick="stepCountdownEmojiSize(4)" style="width:30px;height:32px;border:none;background:var(--bg);color:var(--text);font-size:16px;cursor:pointer;font-family:var(--font)">+</button>
+        </div>
+        <span id="countdownEmojiPreview" style="flex:1;text-align:center;line-height:1"></span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+        <button type="button" onclick="pickCountdownEmoji('🎉')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">🎉</button>
+        <button type="button" onclick="pickCountdownEmoji('🎂')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">🎂</button>
+        <button type="button" onclick="pickCountdownEmoji('❤️')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">❤️</button>
+        <button type="button" onclick="pickCountdownEmoji('🎓')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">🎓</button>
+        <button type="button" onclick="pickCountdownEmoji('✈️')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">✈️</button>
+        <button type="button" onclick="pickCountdownEmoji('🏖️')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">🏖️</button>
+        <button type="button" onclick="pickCountdownEmoji('👰')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">👰</button>
+        <button type="button" onclick="pickCountdownEmoji('⏰')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">⏰</button>
+        <button type="button" onclick="pickCountdownEmoji('📖')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">📖</button>
+        <button type="button" onclick="pickCountdownEmoji('🎈')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">🎈</button>
+        <button type="button" onclick="pickCountdownEmoji('🎁')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">🎁</button>
+        <button type="button" onclick="pickCountdownEmoji('🥳')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">🥳</button>
+        <button type="button" onclick="pickCountdownEmoji('🏆')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">🏆</button>
+        <button type="button" onclick="pickCountdownEmoji('🌟')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">🌟</button>
+        <button type="button" onclick="pickCountdownEmoji('🍾')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">🍾</button>
+        <button type="button" onclick="pickCountdownEmoji('👶')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:16px;cursor:pointer">👶</button>
+        <button type="button" onclick="pickCountdownEmoji('')" style="padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:11px;color:var(--text2);cursor:pointer">נקה</button>
+      </div>
+    </div>
+    <div id="countdownErr" style="display:none;font-size:12px;color:var(--red);margin-top:8px;text-align:center"></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button id="countdownSaveBtn" onclick="saveCountdown()" style="flex:1;padding:12px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer">✓ צור שעון</button>
+      <button onclick="closeCountdownModal()" style="padding:12px 16px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- Family self-service overlays (moved out of .main so they still
+     display correctly even when the "home" shell, not "pay", is active) -->
+    <div id="famEditOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeFamEditSheet()">
+      <div id="famEditSheet" style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:0;width:100%;max-width:360px;max-height:88vh;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden">
+        <div style="padding:16px 18px;border-bottom:1px solid var(--border);flex-shrink:0">
+          <div style="font-size:15px;font-weight:800;color:var(--text)">עריכת משפחה</div>
+        </div>
+        <div style="padding:16px 18px;overflow-y:auto;flex:1;min-height:0">
+
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+            <div id="famEditPhotoPreview" style="width:60px;height:60px;border-radius:50%;overflow:hidden;flex-shrink:0;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;border:2px solid var(--border)"></div>
+            <div style="flex:1">
+              <label style="display:inline-block;padding:7px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--surface);color:var(--text2);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer">
+                📷 העלה תמונה
+                <input type="file" accept="image/*" id="famEditPhoto" style="display:none" onchange="previewFamPhoto(this)">
+              </label>
+              <button onclick="clearFamPhoto()" id="famEditPhotoClear" style="display:none;margin-top:6px;padding:7px 12px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--red-mid);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer">✕ הסר תמונה</button>
+            </div>
+          </div>
+
+          <div style="margin-bottom:18px">
+            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px">שם המשפחה</div>
+            <input type="text" id="famEditName" placeholder="שם המשפחה"
+              style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box">
+          </div>
+
+          <div style="padding-top:14px;border-top:1px solid var(--border)">
+            <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:12px">בני המשפחה</div>
+            <div id="famPeopleGrid"></div>
+          </div>
+
+        </div>
+        <div style="padding:14px 18px;border-top:1px solid var(--border);flex-shrink:0">
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <button class="fund-dep-btn" style="flex:1;padding:12px" onclick="saveFamEdit()">✓ שמור</button>
+            <button onclick="closeFamEditSheet()" style="flex:1;padding:12px;border-radius:var(--r2);border:1px solid var(--border);background:transparent;font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer;color:var(--text)">ביטול</button>
+          </div>
+          <button class="action-btn red edit-only" style="width:100%;box-sizing:border-box" onclick="delFamFromEdit()">🗑 הסר משפחה</button>
+        </div>
+      </div>
+    </div>
+
+  <!-- Person modal (parent or kid) -->
+  <div id="personModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1300;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closePersonModal()">
+    <div style="background:var(--surface);border-radius:var(--r);padding:20px;width:100%;max-width:340px;box-sizing:border-box">
+      <div style="font-size:15px;font-weight:700;margin-bottom:16px" id="personModalTitle">👶 הוסף ילד</div>
+      <input type="text" id="personName" placeholder="שם פרטי"
+        style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);margin-bottom:10px;box-sizing:border-box">
+      <div id="personEmailWrap" style="display:none;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="email" id="personEmail" placeholder="כתובת מייל"
+            autocomplete="email" autocorrect="off" autocapitalize="off" spellcheck="false"
+            style="flex:1;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;direction:ltr;text-align:right">
+          <button type="button" id="personTestBtn" onclick="testSingleEmail('personEmail','personTestBtn')" style="flex-shrink:0;padding:8px 10px;border-radius:var(--r2);border:1.5px solid var(--border);background:var(--surface);font-size:13px;font-family:var(--font);cursor:pointer;color:var(--text2)">בדוק</button>
+        </div>
+      </div>
+      <div id="personGenderWrap" style="display:none;gap:6px;margin-bottom:14px">
+        <button type="button" id="personGenderBoy" onclick="setKidGender('boy')" style="flex:1;padding:9px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">👦 בן</button>
+        <button type="button" id="personGenderGirl" onclick="setKidGender('girl')" style="flex:1;padding:9px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">👧 בת</button>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">תאריך לידה עברי (אופציונלי)</div>
+      <button type="button" id="personDateBtn" onclick="openKidDatePicker()" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);margin-bottom:18px;box-sizing:border-box;cursor:pointer;text-align:center">📅 בחר תאריך לידה</button>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button onclick="savePerson()" style="flex:1;padding:11px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer">✓ שמור</button>
+        <button onclick="closePersonModal()" style="flex:1;padding:11px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer">ביטול</button>
+      </div>
+      <button type="button" id="personDeleteBtn" onclick="deletePerson()" style="display:none;width:100%;padding:10px;border-radius:var(--r2);border:1.5px solid var(--red-bg);background:var(--red-bg);color:var(--red-mid);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;box-sizing:border-box">🗑 מחק</button>
+    </div>
+  </div>
+
+  <!-- Hebrew date picker for kid birthday -->
+  <div id="kidDatePickerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1400;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeKidDatePicker()">
+    <div style="background:var(--surface);border-radius:var(--r);padding:16px;width:100%;max-width:320px;box-sizing:border-box">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;position:relative">
+        <button type="button" class="fh-cal-arrow" onclick="kidPickerPrevMonth()">›</button>
+        <button type="button" id="kidPickerTitle" onclick="toggleKidYearList()" class="fh-cal-month" style="background:none;border:none;font-family:var(--font);cursor:pointer;padding:2px 8px;border-radius:6px"></button>
+        <button type="button" class="fh-cal-arrow" onclick="kidPickerNextMonth()">‹</button>
+        <div id="kidYearList" style="display:none;position:absolute;top:30px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);box-shadow:0 6px 20px rgba(0,0,0,.18);max-height:200px;overflow-y:auto;z-index:10;width:110px"></div>
+      </div>
+      <div class="fh-cal-grid" id="kidPickerGrid"></div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button type="button" onclick="clearKidDate();closeKidDatePicker()" style="flex:1;padding:9px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">נקה תאריך</button>
+        <button type="button" onclick="closeKidDatePicker()" style="flex:1;padding:9px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">סגור</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
