@@ -42,13 +42,6 @@
       <button class="fh-pill-btn" id="pollBannerBtn" style="display:none;background:linear-gradient(135deg,#A78BFA,#7C3AED);box-shadow:0 4px 22px rgba(124,58,237,0.35)" onclick="openPollSheet()">
         <span class="fh-pill-ico">🗳</span><span id="pollBannerLbl">סקר ממתין למילוי</span>
       </button>
-      <button class="fh-pill-btn" style="background:linear-gradient(135deg,#FDBA74,#F97316);box-shadow:0 4px 22px rgba(249,115,22,0.35)" onclick="_enterPayShell();goTab('families',null)">
-        <span class="fh-pill-ico">👥</span>ניהול משפחות
-      </button>
-      <button class="fh-pill-btn" style="position:relative;background:linear-gradient(135deg,#38BDF8,#0EA5E9);box-shadow:0 4px 22px rgba(14,165,233,0.35)" onclick="openNotifCenter()">
-        <span class="fh-pill-ico">🔔</span>התראות
-        <span id="notifCenterBadge" style="display:none;position:absolute;top:8px;left:16px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#fff;color:#0EA5E9;font-size:12px;font-weight:800;align-items:center;justify-content:center;line-height:1;box-shadow:0 1px 4px rgba(0,0,0,0.25)"></span>
-      </button>
     </div>
     <!-- Family calendar card — below on mobile, right on desktop -->
     <div class="fh-card fh-cal-card" style="margin:0">
@@ -482,12 +475,14 @@
 
 <!-- MAIN SHELL NAV -->
 <div id="main-nav">
+  <button class="mn-icon-btn" onclick="_enterPayShell();goTab('families',null)" title="ניהול משפחות">👥</button>
   <button id="mn-home" class="mn-btn mn-active" onclick="switchShell('home')">
     <span class="mn-in"><span class="mn-ico">🏠</span>בית</span>
   </button>
   <button id="mn-pay" class="mn-btn" onclick="switchShell('pay')">
     <span class="mn-in"><span class="mn-ico">💰</span>תשלומים</span>
   </button>
+  <button class="mn-icon-btn" style="position:relative" onclick="openNotifCenter()" title="התראות">🔔<span id="notifCenterBadge" style="display:none;position:absolute;top:2px;left:2px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:var(--red-mid,#d33);color:#fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;line-height:1"></span></button>
 </div>
 
 <!-- Chat bottom sheet -->

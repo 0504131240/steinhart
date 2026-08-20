@@ -221,6 +221,8 @@ body:not(.at-home){padding-bottom:140px}
 .mn-ico{font-size:19px;line-height:1;transition:transform .2s ease}
 .mn-btn.mn-active .mn-ico{transform:translateY(-1px) scale(1.1)}
 .mn-ico{font-size:22px;line-height:1}
+.mn-icon-btn{flex:0 0 44px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;font-size:19px;cursor:pointer;padding:0;font-family:var(--font);color:var(--text2)}
+.mn-icon-btn:hover{background:var(--surface2)}
 /* Home lower section */
 .fh-home-lower{display:flex;flex-direction:column;gap:12px;margin:8px 14px 14px}
 .fh-pill-btns{display:flex;flex-direction:column;gap:10px}
