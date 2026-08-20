@@ -2634,9 +2634,10 @@ function renderFamPeopleGrid(){
       <div style="font-size:11px;font-weight:600;color:${dashed?'var(--text3)':'var(--text)'};text-align:center;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(label)}</div>
     </div>`;
   };
+  const hasP2=!!(f.emailName2||f.email2||f.parent2Bday);
   const parentsHtml=`<div style="display:flex;gap:20px;justify-content:center;margin-bottom:18px">
     ${circle(0,f.emailName||'הורה 1','👤',"openPersonModal('p1')")}
-    ${circle(1,f.emailName2||'הורה 2','👤',"openPersonModal('p2')")}
+    ${hasP2?circle(1,f.emailName2||'הורה 2','👤',"openPersonModal('p2')"):circle(1,'הוסף הורה','+',"openPersonModal('p2')",true)}
   </div>`;
   let kidsHtml=(f.kids||[]).map((k,i)=>{
     const icon=k.gender==='boy'?'👦':k.gender==='girl'?'👧':'👶';
