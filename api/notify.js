@@ -24,8 +24,8 @@ module.exports = async (req, res) => {
   // the notification is tapped, not on the public family page (and vice
   // versa) — registerFCMToken() records which page each token came from.
   const LINKS = {
-    admin: 'https://steinhart.vercel.app/admin.html',
-    index: 'https://steinhart.vercel.app/',
+    admin: 'https://steinhart-livid.vercel.app/admin.html',
+    index: 'https://steinhart-livid.vercel.app/',
   };
   // target:'admin' restricts delivery to admin-registered devices only —
   // used for events that matter to the admin (money movement, family
@@ -48,7 +48,7 @@ module.exports = async (req, res) => {
       tokens: docs.map(d => d.data().token),
       notification: { title, body },
       webpush: {
-        notification: { icon: 'https://steinhart.vercel.app/icon.jpg', dir: 'rtl', lang: 'he' },
+        notification: { icon: 'https://steinhart-livid.vercel.app/icon.jpg', dir: 'rtl', lang: 'he' },
         fcmOptions: { link: LINKS[page] },
       },
     });

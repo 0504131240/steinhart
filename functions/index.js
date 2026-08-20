@@ -96,8 +96,8 @@ async function sendPushToAll(db, title, body) {
     tokens,
     notification: {title, body},
     webpush: {
-      notification: {icon: 'https://steinhart.vercel.app/icon.jpg', dir: 'rtl', lang: 'he'},
-      fcmOptions: {link: 'https://steinhart.vercel.app/'}
+      notification: {icon: 'https://steinhart-livid.vercel.app/icon.jpg', dir: 'rtl', lang: 'he'},
+      fcmOptions: {link: 'https://steinhart-livid.vercel.app/'}
     }
   });
 
@@ -259,7 +259,7 @@ function debtEmailContent(famName, debts, totalDebt) {
       </div>
     </td></tr>
     <tr><td style="padding:0 20px 20px;text-align:center">
-      <a href="https://steinhart.vercel.app/" style="display:inline-block;background:#1E88D8;color:#fff;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:700">פתח באפליקציה ←</a>
+      <a href="https://steinhart-livid.vercel.app/" style="display:inline-block;background:#1E88D8;color:#fff;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:700">פתח באפליקציה ←</a>
     </td></tr>
     </table></td></tr></table></body></html>`;
   return {message, html};

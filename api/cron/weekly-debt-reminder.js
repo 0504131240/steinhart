@@ -43,7 +43,7 @@ function debtEmailContent(famName, debts, totalDebt) {
       </div>
     </td></tr>
     <tr><td style="padding:0 20px 20px;text-align:center">
-      <a href="https://steinhart.vercel.app/" style="display:inline-block;background:#1E88D8;color:#fff;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:700">פתח באפליקציה ←</a>
+      <a href="https://steinhart-livid.vercel.app/" style="display:inline-block;background:#1E88D8;color:#fff;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:700">פתח באפליקציה ←</a>
     </td></tr>
     </table></td></tr></table></body></html>`;
   return { message, html };
@@ -113,8 +113,8 @@ module.exports = async (req, res) => {
           tokens: tokenDocs.map(d => d.data().token),
           notification: { title: '⚠️ תזכורת שבועית: חוב פתוח', body: `סה"כ ₪${totalDebt.toLocaleString()}` },
           webpush: {
-            notification: { icon: 'https://steinhart.vercel.app/icon.jpg', dir: 'rtl', lang: 'he' },
-            fcmOptions: { link: 'https://steinhart.vercel.app/' },
+            notification: { icon: 'https://steinhart-livid.vercel.app/icon.jpg', dir: 'rtl', lang: 'he' },
+            fcmOptions: { link: 'https://steinhart-livid.vercel.app/' },
           },
         });
         pushesSent += resp.successCount;
