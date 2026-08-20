@@ -3778,7 +3778,53 @@ function submitEmailGate(){
   const slot=_cleanEmail(fam.email)===email?1:2;
   localStorage.setItem('deviceFamId3',String(fam.id));
   localStorage.setItem('deviceEmailSlot3',String(slot));
-  showEmailGateWelcome(fam,slot);
+  showOnboardingIntro(fam,slot);
+}
+function showOnboardingIntro(fam,slot){
+  const el=document.getElementById('emailGateContent');const modal=document.getElementById('emailGateModal');
+  if(!el)return;
+  if(modal){ modal.style.display='flex'; modal.onclick=null; }
+  el.innerHTML=`
+    <div style="padding:24px 20px;text-align:right;max-height:82vh;overflow-y:auto;box-sizing:border-box">
+      <div style="text-align:center;margin-bottom:18px">
+        <div style="font-size:34px;margin-bottom:8px">👋</div>
+        <div style="font-size:17px;font-weight:800">ברוכים הבאים לאפליקציה של משפחת Steinhart!</div>
+      </div>
+
+      <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:16px">
+        באפליקציה תוכלו לשוחח בצ'אט המשפחתי, להעלות סקרים, ליצור אירועים בלוח השנה, ולראות ימי הולדת משפחתיים.
+      </div>
+
+      <div style="background:var(--surface2);border-radius:var(--r2);padding:14px;margin-bottom:16px">
+        <div style="font-size:13px;font-weight:800;margin-bottom:6px">💳 טאב תשלומים</div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.7">
+          כאן נמצא כל הנושא הכספי של אירועים משפחתיים: קופה לאיסוף כסף למתנות, וחישוב ואיזון תשלומים בפעילויות משפחתיות.
+          כל אחד מסמן מה שילם — והאפליקציה מחשבת לכם אוטומטית מי צריך להעביר למי כסף כדי לאזן את התשלום.
+        </div>
+      </div>
+
+      <div style="background:var(--blue-bg,var(--surface2));border-radius:var(--r2);padding:14px;margin-bottom:16px">
+        <div style="font-size:13px;font-weight:800;margin-bottom:6px">🔔 כדאי לאשר קבלת התראות</div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.7;margin-bottom:10px">
+          כך תקבלו התראה למכשיר על אירועים חדשים, ימי הולדת והודעות בצ'אט.
+        </div>
+        <button onclick="requestNotifPerm()" style="width:100%;padding:10px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">🔔 הפעל התראות</button>
+      </div>
+
+      <div style="background:var(--surface2);border-radius:var(--r2);padding:14px;margin-bottom:20px">
+        <div style="font-size:13px;font-weight:800;margin-bottom:6px">📲 הוספת האתר כאפליקציה למכשיר</div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.7">
+          <b>אייפון (Safari):</b> לחצו על כפתור השיתוף ⬆️ בסרגל התחתון, ואז על "הוסף למסך הבית".<br>
+          <b>אנדרואיד (Chrome):</b> לחצו על שלוש הנקודות ⋮ בפינה, ואז על "התקן אפליקציה" או "הוסף למסך הבית".
+        </div>
+      </div>
+
+      <button onclick="finishOnboarding(${fam.id})" style="width:100%;padding:12px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer">✏️ עריכת פרטי המשפחה</button>
+    </div>`;
+}
+function finishOnboarding(famId){
+  const modal=document.getElementById('emailGateModal');if(modal)modal.style.display='none';
+  openFamEditSheet(famId);
 }
 function resetDeviceIdentity(){
   localStorage.removeItem('deviceFamId3');
