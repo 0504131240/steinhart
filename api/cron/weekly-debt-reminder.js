@@ -113,7 +113,7 @@ module.exports = async (req, res) => {
           tokens: tokenDocs.map(d => d.data().token),
           notification: { title: '⚠️ תזכורת שבועית: חוב פתוח', body: `סה"כ ₪${totalDebt.toLocaleString()}` },
           webpush: {
-            notification: { icon: 'https://steinhart-livid.vercel.app/icon.jpg', dir: 'rtl', lang: 'he' },
+            notification: { icon: 'https://steinhart-livid.vercel.app/icon-192.png', dir: 'rtl', lang: 'he' },
             fcmOptions: { link: 'https://steinhart-livid.vercel.app/' },
           },
         });

@@ -19,7 +19,7 @@ messaging.onBackgroundMessage(payload => {
   // to send admin-registered devices to the wrong page on click.
   const url = payload.fcmOptions?.link || (self.location.origin + '/');
   self.registration.showNotification(title, {
-    body, icon:'/icon.jpg', dir:'rtl', lang:'he',
+    body, icon:'/icon-192.png', dir:'rtl', lang:'he',
     data:{url}
   });
 });
@@ -37,8 +37,8 @@ self.addEventListener('notificationclick', e => {
   );
 });
 
-const CACHE = 'family-pay-v7';
-const STATIC = ['./icon.svg','./icon.jpg','./manifest.json'];
+const CACHE = 'family-pay-v8';
+const STATIC = ['./icon.svg','./icon-192.png','./icon-512.png','./manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(STATIC)));

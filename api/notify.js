@@ -48,7 +48,7 @@ module.exports = async (req, res) => {
       tokens: docs.map(d => d.data().token),
       notification: { title, body },
       webpush: {
-        notification: { icon: 'https://steinhart-livid.vercel.app/icon.jpg', dir: 'rtl', lang: 'he' },
+        notification: { icon: 'https://steinhart-livid.vercel.app/icon-192.png', dir: 'rtl', lang: 'he' },
         fcmOptions: { link: LINKS[page] },
       },
     });
