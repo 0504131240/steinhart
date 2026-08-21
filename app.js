@@ -1072,16 +1072,16 @@ function _ageLabel(item,occHebYear){
   if(item.gender==='girl')return' (בת '+n+')';
   return' ('+n+')';
 }
-// Same age, but as a little balloon/pill for the calendar's birthday rows
-// instead of plain parenthetical text — anniversaries and yahrzeits keep
-// using _ageLabel's inline text since "בן/בת" doesn't apply to them.
+// Same age, but as an actual little red party balloon (🎈) for the
+// calendar's birthday rows instead of plain parenthetical text —
+// anniversaries and yahrzeits keep using _ageLabel's inline text since
+// "בן/בת" doesn't apply to them.
 function _bdayAgeBadge(item,occHebYear){
   if(item.kind!=='birthday'||!item.hebYear||!occHebYear)return'';
   const n=occHebYear-item.hebYear;
   if(n<=0)return'';
   const txt=item.gender==='boy'?'בן '+n:item.gender==='girl'?'בת '+n:String(n);
-  const style=item.gender==='girl'?'background:#fce7f3;color:#db2777':'background:var(--blue-bg);color:var(--blue)';
-  return`<span class="badge" style="${style};margin-inline-start:6px">${esc(txt)}</span>`;
+  return`<span class="bday-balloon">${esc(txt)}</span>`;
 }
 // The one specific birthday occurrence a bar/bat mitzvah lands on — a boy
 // turning 13, a girl turning 12 — so the calendar can call it what it is
@@ -2770,8 +2770,7 @@ function openFamDetail(famId){
           const age=kidAge(k);
           if(age!=null){
             const txt=k.gender==='boy'?'בן '+age:k.gender==='girl'?'בת '+age:String(age);
-            const style=k.gender==='girl'?'background:#fce7f3;color:#db2777':'background:var(--blue-bg);color:var(--blue)';
-            ageBadge=`<span class="badge" style="${style};margin-inline-start:6px">${esc(txt)}</span>`;
+            ageBadge=`<span class="bday-balloon">${esc(txt)}</span>`;
           }
         }
         return`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
