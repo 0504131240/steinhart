@@ -1033,13 +1033,13 @@ function renderNotifBtn(){
 function allBirthdays(){
   const kidBdays=families.flatMap(f=>(f.kids||[]).filter(k=>k.hebDay&&k.hebMonth).map(k=>({
     name:(k.name?k.name:'ילד/ה')+' ('+f.name.replace('משפחת','').trim()+')',
-    hebDay:k.hebDay,hebMonth:k.hebMonth,kind:'birthday'
+    hebDay:k.hebDay,hebMonth:k.hebMonth,hebYear:k.hebYear||null,gender:k.gender||'',kind:'birthday'
   })));
   const parentBdays=families.flatMap(f=>{
     const fam=f.name.replace('משפחת','').trim();
     const arr=[];
-    if(f.parent1Bday&&f.parent1Bday.hebDay&&f.parent1Bday.hebMonth)arr.push({name:(f.emailName||'הורה')+' ('+fam+')',hebDay:f.parent1Bday.hebDay,hebMonth:f.parent1Bday.hebMonth,kind:'birthday'});
-    if(f.parent2Bday&&f.parent2Bday.hebDay&&f.parent2Bday.hebMonth)arr.push({name:(f.emailName2||'הורה')+' ('+fam+')',hebDay:f.parent2Bday.hebDay,hebMonth:f.parent2Bday.hebMonth,kind:'birthday'});
+    if(f.parent1Bday&&f.parent1Bday.hebDay&&f.parent1Bday.hebMonth)arr.push({name:(f.emailName||'הורה')+' ('+fam+')',hebDay:f.parent1Bday.hebDay,hebMonth:f.parent1Bday.hebMonth,hebYear:f.parent1Bday.hebYear||null,gender:'',kind:'birthday'});
+    if(f.parent2Bday&&f.parent2Bday.hebDay&&f.parent2Bday.hebMonth)arr.push({name:(f.emailName2||'הורה')+' ('+fam+')',hebDay:f.parent2Bday.hebDay,hebMonth:f.parent2Bday.hebMonth,hebYear:f.parent2Bday.hebYear||null,gender:'',kind:'birthday'});
     return arr;
   });
   const anniversaries=families.filter(f=>f.anniversary&&f.anniversary.hebDay&&f.anniversary.hebMonth).map(f=>({
@@ -1047,6 +1047,18 @@ function allBirthdays(){
     hebDay:f.anniversary.hebDay,hebMonth:f.anniversary.hebMonth,kind:'anniversary'
   }));
   return [...kidBdays,...parentBdays,...anniversaries];
+}
+// Age turning on a specific occurrence of a birthday, given the Hebrew year of
+// that occurrence's date — null if the birth year was never recorded (older
+// entries only saved day+month). Phrased "בן/בת" when the kid's gender is
+// known, otherwise a plain "(N)" since parents' gender isn't tracked.
+function _ageLabel(item,occHebYear){
+  if(!item.hebYear||!occHebYear)return'';
+  const age=occHebYear-item.hebYear;
+  if(age<=0)return'';
+  if(item.gender==='boy')return' (בן '+age+')';
+  if(item.gender==='girl')return' (בת '+age+')';
+  return' ('+age+')';
 }
 async function checkBirthdayNotifs(){
   const all=allBirthdays();
@@ -1056,14 +1068,16 @@ async function checkBirthdayNotifs(){
   localStorage.setItem('bdayNotifDate',todayStr);
   const dayFmt=new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{day:'numeric'});
   const monthFmt=new Intl.DateTimeFormat('he-IL-u-ca-hebrew',{month:'long'});
+  const yearFmt=new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{year:'numeric'});
   const {db,doc,getDoc,setDoc}=await fbInit();
   for(let i=0;i<=7;i++){
     const d=new Date(today);d.setDate(d.getDate()+i);
     const hd=parseInt(dayFmt.format(d)),hm=monthFmt.format(d);
     for(const b of all.filter(b=>b.hebDay===hd&&b.hebMonth===hm)){
       const isAnniv=b.kind==='anniversary';
+      const ageLbl=isAnniv?'':_ageLabel(b,parseInt(yearFmt.format(d)));
       const title=isAnniv?(i===0?'💍 יום נישואין היום!':'💍 יום נישואין בעוד '+i+' ימים'):(i===0?'🎂 יום הולדת היום!':'🎂 יום הולדת בעוד '+i+' ימים');
-      const body=isAnniv?(i===0?'מזל טוב למשפחת '+b.name+'!':'של משפחת '+b.name):(i===0?'יום הולדת שמח ל'+b.name+'!':'של '+b.name);
+      const body=isAnniv?(i===0?'מזל טוב למשפחת '+b.name+'!':'של משפחת '+b.name):(i===0?'יום הולדת שמח ל'+b.name+ageLbl+'!':'של '+b.name+ageLbl);
       // Every device with notifications on runs this same check
       // independently each day. Claim the (date, offset, person) combo in
       // Firestore first — only the device that wins the claim actually
@@ -1387,10 +1401,11 @@ function renderCalEvList(hebDays,bdayByDate){
       :d.toLocaleDateString('he-IL',{day:'numeric',month:'long'});
     if(type==='bday'){
       const isAnniv=item.kind==='anniversary';
+      const ageLbl=isAnniv?'':_ageLabel(item,hebYNum);
       return`<div class="fh-cal-ev">
         <div class="fh-cal-ev-dot" style="background:#c0392b"></div>
         <div class="fh-cal-ev-info">
-          <div class="fh-cal-ev-name">${isAnniv?'💍':'🎂'} ${esc(item.name)} — ${isAnniv?'יום נישואין':'יום הולדת'}</div>
+          <div class="fh-cal-ev-name">${isAnniv?'💍':'🎂'} ${esc(item.name)}${esc(ageLbl)} — ${isAnniv?'יום נישואין':'יום הולדת'}</div>
           <div class="fh-cal-ev-date">${lbl}</div>
         </div>
       </div>`;
