@@ -1096,6 +1096,20 @@ async function startRealtimeSync(){
           nxtMsg=messages.length?Math.max(...messages.map(m=>m.id))+1:1;
           renderMessages();
         }
+        // Families aren't append-only like messages (edits happen in place —
+        // a new photo, a name change), so there's no id/count to diff against.
+        // Without this, a tab left open with a stale in-memory `families`
+        // would silently overwrite someone else's just-saved edit (a photo,
+        // an anniversary date...) the next time *anything* on this page
+        // calls save() — save() always pushes the whole document, including
+        // whatever `families` happens to be sitting in memory. Adopting the
+        // remote copy whenever it actually differs closes that window.
+        const snapFamilies=d.families||[];
+        if(JSON.stringify(snapFamilies)!==JSON.stringify(families)){
+          families=snapFamilies;
+          nxtFam=families.length?Math.max(...families.map(f=>f.id))+1:1;
+          render();
+        }
       }
       _initialSync=false;
     });
