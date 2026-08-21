@@ -1044,21 +1044,23 @@ function allBirthdays(){
   });
   const anniversaries=families.filter(f=>f.anniversary&&f.anniversary.hebDay&&f.anniversary.hebMonth).map(f=>({
     name:f.name.replace('משפחת','').trim(),
-    hebDay:f.anniversary.hebDay,hebMonth:f.anniversary.hebMonth,kind:'anniversary'
+    hebDay:f.anniversary.hebDay,hebMonth:f.anniversary.hebMonth,hebYear:f.anniversary.hebYear||null,kind:'anniversary'
   }));
   return [...kidBdays,...parentBdays,...anniversaries];
 }
-// Age turning on a specific occurrence of a birthday, given the Hebrew year of
-// that occurrence's date — null if the birth year was never recorded (older
-// entries only saved day+month). Phrased "בן/בת" when the kid's gender is
-// known, otherwise a plain "(N)" since parents' gender isn't tracked.
+// Age (or years married, for an anniversary) turning on a specific occurrence,
+// given the Hebrew year of that occurrence's date — empty if the year was
+// never recorded (older entries only saved day+month). Phrased "בן/בת" when
+// the kid's gender is known, otherwise a plain "(N)" since parents' gender
+// isn't tracked.
 function _ageLabel(item,occHebYear){
   if(!item.hebYear||!occHebYear)return'';
-  const age=occHebYear-item.hebYear;
-  if(age<=0)return'';
-  if(item.gender==='boy')return' (בן '+age+')';
-  if(item.gender==='girl')return' (בת '+age+')';
-  return' ('+age+')';
+  const n=occHebYear-item.hebYear;
+  if(n<=0)return'';
+  if(item.kind==='anniversary')return' ('+n+(n===1?' שנה':' שנים')+' לנישואין)';
+  if(item.gender==='boy')return' (בן '+n+')';
+  if(item.gender==='girl')return' (בת '+n+')';
+  return' ('+n+')';
 }
 async function checkBirthdayNotifs(){
   const all=allBirthdays();
@@ -1075,9 +1077,9 @@ async function checkBirthdayNotifs(){
     const hd=parseInt(dayFmt.format(d)),hm=monthFmt.format(d);
     for(const b of all.filter(b=>b.hebDay===hd&&b.hebMonth===hm)){
       const isAnniv=b.kind==='anniversary';
-      const ageLbl=isAnniv?'':_ageLabel(b,parseInt(yearFmt.format(d)));
+      const ageLbl=_ageLabel(b,parseInt(yearFmt.format(d)));
       const title=isAnniv?(i===0?'💍 יום נישואין היום!':'💍 יום נישואין בעוד '+i+' ימים'):(i===0?'🎂 יום הולדת היום!':'🎂 יום הולדת בעוד '+i+' ימים');
-      const body=isAnniv?(i===0?'מזל טוב למשפחת '+b.name+'!':'של משפחת '+b.name):(i===0?'יום הולדת שמח ל'+b.name+ageLbl+'!':'של '+b.name+ageLbl);
+      const body=isAnniv?(i===0?'מזל טוב למשפחת '+b.name+ageLbl+'!':'של משפחת '+b.name+ageLbl):(i===0?'יום הולדת שמח ל'+b.name+ageLbl+'!':'של '+b.name+ageLbl);
       // Every device with notifications on runs this same check
       // independently each day. Claim the (date, offset, person) combo in
       // Firestore first — only the device that wins the claim actually
@@ -1401,7 +1403,7 @@ function renderCalEvList(hebDays,bdayByDate){
       :d.toLocaleDateString('he-IL',{day:'numeric',month:'long'});
     if(type==='bday'){
       const isAnniv=item.kind==='anniversary';
-      const ageLbl=isAnniv?'':_ageLabel(item,hebYNum);
+      const ageLbl=_ageLabel(item,hebYNum);
       return`<div class="fh-cal-ev">
         <div class="fh-cal-ev-dot" style="background:#c0392b"></div>
         <div class="fh-cal-ev-info">
