@@ -22,7 +22,8 @@ let visits=[];
 let notifications=[];
 let polls=[];
 let countdowns=[];
-let nxtMsg=1,nxtCal=1,nxtBday=1,nxtClaim=1,nxtNotif=1,nxtPoll=1,nxtCountdown=1;
+let yahrzeits=[];
+let nxtMsg=1,nxtCal=1,nxtBday=1,nxtClaim=1,nxtNotif=1,nxtPoll=1,nxtCountdown=1,nxtYahrzeit=1;
 let currentShell='home';
 let calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calSelDay=null,calHebrew=true;
 let calHebRefDate=new Date();
@@ -528,6 +529,7 @@ function saveLocal(){
     localStorage.setItem('notifications',JSON.stringify(notifications));
     localStorage.setItem('polls',JSON.stringify(polls));
     localStorage.setItem('countdowns',JSON.stringify(countdowns));
+    localStorage.setItem('yahrzeits',JSON.stringify(yahrzeits));
   }catch(e){}
 }
 
@@ -542,7 +544,7 @@ async function save(){
   showSyncStatus('שומר...');
   try{
     const {db,doc,setDoc}=await fbInit();
-    await setDoc(doc(db,'appData','familyPayments'),{families,events,fund,goalFunds,adminPass,messages,calItems,birthdays,paymentClaims,visits,notifications,polls,countdowns});
+    await setDoc(doc(db,'appData','familyPayments'),{families,events,fund,goalFunds,adminPass,messages,calItems,birthdays,paymentClaims,visits,notifications,polls,countdowns,yahrzeits});
     localStorage.removeItem('pendingSave');
     localStorage.removeItem('pendingSaveAt');
     showSyncStatus('✓ נשמר',2000);
@@ -577,6 +579,7 @@ async function load(){
     notifications=d.notifications||[];
     polls=d.polls||[];
     countdowns=d.countdowns||[];
+    yahrzeits=d.yahrzeits||[];
     nxtMsg=messages.length?Math.max(...messages.map(m=>m.id))+1:1;
     nxtCal=calItems.length?Math.max(...calItems.map(c=>c.id))+1:1;
     nxtBday=birthdays.length?Math.max(...birthdays.map(b=>b.id))+1:1;
@@ -584,6 +587,7 @@ async function load(){
     nxtNotif=notifications.length?Math.max(...notifications.map(n=>n.id))+1:1;
     nxtPoll=polls.length?Math.max(...polls.map(p=>p.id))+1:1;
     nxtCountdown=countdowns.length?Math.max(...countdowns.map(c=>c.id))+1:1;
+    nxtYahrzeit=yahrzeits.length?Math.max(...yahrzeits.map(y=>y.id))+1:1;
     nxtId=events.length?Math.max(...events.map(e=>e.id))+1:1;
     nxtFam=families.length?Math.max(...families.map(f=>f.id))+1:1;
     nxtTx=(fund.transactions||[]).length?Math.max(...fund.transactions.map(t=>t.id))+1:1;
@@ -629,6 +633,7 @@ async function load(){
       const nts=localStorage.getItem('notifications');if(nts)notifications=JSON.parse(nts);
       const pls=localStorage.getItem('polls');if(pls)polls=JSON.parse(pls);
       const cds=localStorage.getItem('countdowns');if(cds)countdowns=JSON.parse(cds);
+      const yhz=localStorage.getItem('yahrzeits');if(yhz)yahrzeits=JSON.parse(yhz);
       nxtMsg=messages.length?Math.max(...messages.map(m=>m.id))+1:1;
       nxtCal=calItems.length?Math.max(...calItems.map(c=>c.id))+1:1;
       nxtBday=birthdays.length?Math.max(...birthdays.map(b=>b.id))+1:1;
@@ -636,6 +641,7 @@ async function load(){
       nxtNotif=notifications.length?Math.max(...notifications.map(n=>n.id))+1:1;
       nxtPoll=polls.length?Math.max(...polls.map(p=>p.id))+1:1;
       nxtCountdown=countdowns.length?Math.max(...countdowns.map(c=>c.id))+1:1;
+      nxtYahrzeit=yahrzeits.length?Math.max(...yahrzeits.map(y=>y.id))+1:1;
       nxtId=events.reduce((a,e)=>Math.max(a,e.id),0)+1;
       nxtFam=families.reduce((a,f)=>Math.max(a,f.id),0)+1;
       nxtGoal=goalFunds.length?Math.max(...goalFunds.map(g=>g.id))+1:1;
@@ -1046,7 +1052,10 @@ function allBirthdays(){
     name:f.name.replace('משפחת','').trim(),
     hebDay:f.anniversary.hebDay,hebMonth:f.anniversary.hebMonth,hebYear:f.anniversary.hebYear||null,kind:'anniversary'
   }));
-  return [...kidBdays,...parentBdays,...anniversaries];
+  const yahrzeitItems=yahrzeits.filter(y=>y.hebDay&&y.hebMonth).map(y=>({
+    id:y.id,name:y.name||'יקירנו',hebDay:y.hebDay,hebMonth:y.hebMonth,hebYear:y.hebYear||null,kind:'yahrzeit'
+  }));
+  return [...kidBdays,...parentBdays,...anniversaries,...yahrzeitItems];
 }
 // Age (or years married, for an anniversary) turning on a specific occurrence,
 // given the Hebrew year of that occurrence's date — empty if the year was
@@ -1058,6 +1067,7 @@ function _ageLabel(item,occHebYear){
   const n=occHebYear-item.hebYear;
   if(n<=0)return'';
   if(item.kind==='anniversary')return' ('+n+(n===1?' שנה':' שנים')+' לנישואין)';
+  if(item.kind==='yahrzeit')return' ('+n+(n===1?' שנה':' שנים')+' מהפטירה)';
   if(item.gender==='boy')return' (בן '+n+')';
   if(item.gender==='girl')return' (בת '+n+')';
   return' ('+n+')';
@@ -1077,9 +1087,10 @@ async function checkBirthdayNotifs(){
     const hd=parseInt(dayFmt.format(d)),hm=monthFmt.format(d);
     for(const b of all.filter(b=>b.hebDay===hd&&b.hebMonth===hm)){
       const isAnniv=b.kind==='anniversary';
+      const isYahrzeit=b.kind==='yahrzeit';
       const ageLbl=_ageLabel(b,parseInt(yearFmt.format(d)));
-      const title=isAnniv?(i===0?'💍 יום נישואין היום!':'💍 יום נישואין בעוד '+i+' ימים'):(i===0?'🎂 יום הולדת היום!':'🎂 יום הולדת בעוד '+i+' ימים');
-      const body=isAnniv?(i===0?'מזל טוב למשפחת '+b.name+ageLbl+'!':'של משפחת '+b.name+ageLbl):(i===0?'יום הולדת שמח ל'+b.name+ageLbl+'!':'של '+b.name+ageLbl);
+      const title=isYahrzeit?(i===0?'🕯️ יארצייט היום':'🕯️ יארצייט בעוד '+i+' ימים'):isAnniv?(i===0?'💍 יום נישואין היום!':'💍 יום נישואין בעוד '+i+' ימים'):(i===0?'🎂 יום הולדת היום!':'🎂 יום הולדת בעוד '+i+' ימים');
+      const body=isYahrzeit?(i===0?'היום היארצייט של '+b.name+ageLbl:'של '+b.name+ageLbl):isAnniv?(i===0?'מזל טוב למשפחת '+b.name+ageLbl+'!':'של משפחת '+b.name+ageLbl):(i===0?'יום הולדת שמח ל'+b.name+ageLbl+'!':'של '+b.name+ageLbl);
       // Every device with notifications on runs this same check
       // independently each day. Claim the (date, offset, person) combo in
       // Firestore first — only the device that wins the claim actually
@@ -1148,6 +1159,8 @@ async function startRealtimeSync(){
           ()=>{nxtPoll=polls.length?Math.max(...polls.map(p=>p.id))+1:1;})||changed;
         changed=_adoptIfChanged(d.countdowns||[],()=>countdowns,v=>countdowns=v,
           ()=>{nxtCountdown=countdowns.length?Math.max(...countdowns.map(c=>c.id))+1:1;})||changed;
+        changed=_adoptIfChanged(d.yahrzeits||[],()=>yahrzeits,v=>yahrzeits=v,
+          ()=>{nxtYahrzeit=yahrzeits.length?Math.max(...yahrzeits.map(y=>y.id))+1:1;})||changed;
         if((d.adminPass||'')!==adminPass){adminPass=d.adminPass||'';}
         if(changed)render();
       }
@@ -1361,7 +1374,7 @@ function renderCalendar(){
       html+=`<div class="${cls}" onclick="selectCalDay('${ds}')">
         <span style="font-size:10px;line-height:1">${label}</span>
         ${hasEv?`<span class="fh-cal-day-ev">${evOnDay.map(c=>c.title.slice(0,5)).join(',')}</span>`:''}
-        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(b.kind==='anniversary'?'💍':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
+        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(b.kind==='anniversary'?'💍':b.kind==='yahrzeit'?'🕯️':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
       </div>`;
     }
   } else {
@@ -1385,7 +1398,7 @@ function renderCalendar(){
       html+=`<div class="${cls}" onclick="selectCalDay('${ds}')">
         <span style="font-size:12px;line-height:1">${d}</span>
         ${hasEv?`<span class="fh-cal-day-ev">${evOnDay.map(c=>c.title.slice(0,5)).join(',')}</span>`:''}
-        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(b.kind==='anniversary'?'💍':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
+        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(b.kind==='anniversary'?'💍':b.kind==='yahrzeit'?'🕯️':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
       </div>`;
     }
   }
@@ -1427,13 +1440,17 @@ function renderCalEvList(hebDays,bdayByDate){
       :d.toLocaleDateString('he-IL',{day:'numeric',month:'long'});
     if(type==='bday'){
       const isAnniv=item.kind==='anniversary';
+      const isYahrzeit=item.kind==='yahrzeit';
       const ageLbl=_ageLabel(item,hebYNum);
-      return`<div class="fh-cal-ev">
+      const icon=isYahrzeit?`<span class="flame-flicker">🕯️</span>`:isAnniv?'💍':'🎂';
+      const label=isYahrzeit?'יארצייט':isAnniv?'יום נישואין':'יום הולדת';
+      return`<div class="fh-cal-ev"${isYahrzeit?` onclick="openYahrzeitModal(${item.id})" style="cursor:pointer"`:''}>
         <div class="fh-cal-ev-dot" style="background:#c0392b"></div>
         <div class="fh-cal-ev-info">
-          <div class="fh-cal-ev-name">${isAnniv?'💍':'🎂'} ${esc(item.name)}${esc(ageLbl)} — ${isAnniv?'יום נישואין':'יום הולדת'}</div>
+          <div class="fh-cal-ev-name">${icon} ${esc(item.name)}${esc(ageLbl)} — ${label}</div>
           <div class="fh-cal-ev-date">${lbl}</div>
         </div>
+        ${isYahrzeit?`<button onclick="event.stopPropagation();deleteYahrzeit(${item.id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0 4px;opacity:.5">✕</button>`:''}
       </div>`;
     }
     return`<div class="fh-cal-ev">
@@ -1464,6 +1481,44 @@ function deleteCalItem(id){
   if(!confirm('למחוק אירוע זה?'))return;
   calItems=calItems.filter(c=>c.id!==id);
   save();renderCalendar();
+}
+
+let _yahrzeitEditId=null;
+function openYahrzeitModal(id){
+  _yahrzeitEditId=id??null;
+  const y=id!=null?yahrzeits.find(x=>x.id===id):null;
+  document.getElementById('yahrzeitModalTitle').textContent=y?'✏️ עריכת יארצייט':'🕯️ הוסף יארצייט';
+  document.getElementById('yahrzeitName').value=y?.name||'';
+  if(y&&y.hebDay&&y.hebMonth&&y.hebYear){_kidPickedDate={hebYear:y.hebYear,hebMonth:y.hebMonth,hebDay:y.hebDay};_kidLegacyDate=null;}
+  else if(y&&y.hebDay&&y.hebMonth){_kidPickedDate=null;_kidLegacyDate={hebMonth:y.hebMonth,hebDay:y.hebDay};}
+  else{_kidPickedDate=null;_kidLegacyDate=null;}
+  _datePickerTarget='yahrzeit';
+  updateKidDateBtn();
+  document.getElementById('yahrzeitDeleteBtn').style.display=y?'block':'none';
+  document.getElementById('yahrzeitModal').style.display='flex';
+  setTimeout(()=>{document.getElementById('yahrzeitName')?.focus();},50);
+}
+function closeYahrzeitModal(){
+  document.getElementById('yahrzeitModal').style.display='none';
+  _yahrzeitEditId=null;
+}
+function saveYahrzeit(){
+  const name=(document.getElementById('yahrzeitName').value||'').trim();
+  if(!name){alert('נא להזין שם');return;}
+  const bday=_currentBdayValue();
+  if(!bday){alert('נא לבחור תאריך פטירה');return;}
+  if(_yahrzeitEditId!=null){
+    const y=yahrzeits.find(x=>x.id===_yahrzeitEditId);
+    if(y){y.name=name;y.hebDay=bday.hebDay;y.hebMonth=bday.hebMonth;y.hebYear=bday.hebYear;}
+  }else{
+    yahrzeits.push({id:nxtYahrzeit++,name,hebDay:bday.hebDay,hebMonth:bday.hebMonth,hebYear:bday.hebYear});
+  }
+  save();renderCalendar();closeYahrzeitModal();
+}
+function deleteYahrzeit(id){
+  if(!confirm('למחוק את היארצייט?'))return;
+  yahrzeits=yahrzeits.filter(y=>y.id!==id);
+  save();renderCalendar();closeYahrzeitModal();
 }
 
 function startEditCost(evId){
@@ -2706,6 +2761,7 @@ function closeFamEditSheet(){
   _famEditId=null;
 }
 let _personMode=null,_personKidId=null,_kidGender='',_kidPickedDate=null,_kidPickerRefDate=new Date(),_kidLegacyDate=null;
+let _datePickerTarget='person';
 function setKidGender(g){
   _kidGender=g;
   const b1=document.getElementById('personGenderBoy'),b2=document.getElementById('personGenderGirl');
@@ -2713,10 +2769,11 @@ function setKidGender(g){
   if(b2){b2.style.background=g==='girl'?'var(--blue-mid)':'transparent';b2.style.color=g==='girl'?'#fff':'var(--text2)';b2.style.borderColor=g==='girl'?'var(--blue-mid)':'var(--border)';}
 }
 function updateKidDateBtn(){
-  const btn=document.getElementById('personDateBtn');if(!btn)return;
+  const btnId=_datePickerTarget==='yahrzeit'?'yahrzeitDateBtn':'personDateBtn';
+  const btn=document.getElementById(btnId);if(!btn)return;
   if(_kidPickedDate)btn.textContent='📅 '+HEB_DAY_NUM[_kidPickedDate.hebDay]+' ב'+_kidPickedDate.hebMonth+' '+toHebrewYear(_kidPickedDate.hebYear);
   else if(_kidLegacyDate)btn.textContent='📅 '+HEB_DAY_NUM[_kidLegacyDate.hebDay]+' ב'+_kidLegacyDate.hebMonth+' (בחר שוב כדי להוסיף שנה)';
-  else btn.textContent=_personMode==='anniv'?'📅 בחר תאריך נישואין':'📅 בחר תאריך לידה';
+  else btn.textContent=_datePickerTarget==='yahrzeit'?'📅 בחר תאריך פטירה':(_personMode==='anniv'?'📅 בחר תאריך נישואין':'📅 בחר תאריך לידה');
 }
 function clearKidDate(){
   _kidPickedDate=null;
@@ -2724,6 +2781,14 @@ function clearKidDate(){
   updateKidDateBtn();
 }
 function openKidDatePicker(){
+  _datePickerTarget='person';
+  _kidPickerRefDate=_kidPickedDate?(hebrewToGregorian(_kidPickedDate.hebYear,_kidPickedDate.hebMonth,_kidPickedDate.hebDay)||new Date()):new Date();
+  closeKidYearList();
+  renderKidDatePicker();
+  document.getElementById('kidDatePickerModal').style.display='flex';
+}
+function openYahrzeitDatePicker(){
+  _datePickerTarget='yahrzeit';
   _kidPickerRefDate=_kidPickedDate?(hebrewToGregorian(_kidPickedDate.hebYear,_kidPickedDate.hebMonth,_kidPickedDate.hebDay)||new Date()):new Date();
   closeKidYearList();
   renderKidDatePicker();

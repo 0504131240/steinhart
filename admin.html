@@ -61,9 +61,12 @@
       </div>
       <div class="fh-cal-grid" id="calGrid"></div>
       <div class="fh-cal-evlist" id="calEvList"></div>
-      <div style="padding:0 14px 14px;display:flex;gap:8px;flex-wrap:wrap">
+      <div style="padding:0 14px 6px;display:flex;gap:8px;flex-wrap:wrap">
         <button onclick="openCalModal()" style="flex:1;min-width:90px;padding:9px;border-radius:var(--r2);border:1.5px dashed #667eea;background:transparent;color:#667eea;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">+ אירוע</button>
-        <button onclick="openNewPollModal()" class="edit-only" style="flex:1;min-width:90px;padding:9px;border-radius:var(--r2);border:1.5px dashed #7C3AED;background:transparent;color:#7C3AED;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">🗳 צור סקר</button>
+        <button onclick="openYahrzeitModal()" style="flex:1;min-width:90px;padding:9px;border-radius:var(--r2);border:1.5px dashed #78716c;background:transparent;color:#78716c;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">🕯️ הוסף יארצייט</button>
+      </div>
+      <div style="padding:0 14px 14px">
+        <button onclick="openNewPollModal()" class="edit-only" style="width:100%;padding:9px;border-radius:var(--r2);border:1.5px dashed #7C3AED;background:transparent;color:#7C3AED;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">🗳 צור סקר</button>
       </div>
     </div>
   </div>
@@ -853,6 +856,22 @@
         <button onclick="closePersonModal()" style="flex:1;padding:11px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer">ביטול</button>
       </div>
       <button type="button" id="personDeleteBtn" onclick="deletePerson()" style="display:none;width:100%;padding:10px;border-radius:var(--r2);border:1.5px solid var(--red-bg);background:var(--red-bg);color:var(--red-mid);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;box-sizing:border-box">🗑 מחק</button>
+    </div>
+  </div>
+
+  <!-- Yahrzeit add/edit modal -->
+  <div id="yahrzeitModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:1300;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeYahrzeitModal()">
+    <div style="background:var(--surface);border-radius:var(--r);padding:20px;width:100%;max-width:340px;box-sizing:border-box">
+      <div style="font-size:15px;font-weight:700;margin-bottom:16px" id="yahrzeitModalTitle">🕯️ הוסף יארצייט</div>
+      <input type="text" id="yahrzeitName" placeholder="שם הנפטר/ת"
+        style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);margin-bottom:14px;box-sizing:border-box">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">תאריך פטירה עברי</div>
+      <button type="button" id="yahrzeitDateBtn" onclick="openYahrzeitDatePicker()" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);margin-bottom:18px;box-sizing:border-box;cursor:pointer;text-align:center">📅 בחר תאריך פטירה</button>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <button onclick="saveYahrzeit()" style="flex:1;padding:11px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer">✓ שמור</button>
+        <button onclick="closeYahrzeitModal()" style="flex:1;padding:11px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:14px;font-weight:600;font-family:var(--font);cursor:pointer">ביטול</button>
+      </div>
+      <button type="button" id="yahrzeitDeleteBtn" onclick="deleteYahrzeit(_yahrzeitEditId)" style="display:none;width:100%;padding:10px;border-radius:var(--r2);border:1.5px solid var(--red-bg);background:var(--red-bg);color:var(--red-mid);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;box-sizing:border-box">🗑 מחק</button>
     </div>
   </div>
 
