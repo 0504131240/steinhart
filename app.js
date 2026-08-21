@@ -1033,16 +1033,20 @@ function renderNotifBtn(){
 function allBirthdays(){
   const kidBdays=families.flatMap(f=>(f.kids||[]).filter(k=>k.hebDay&&k.hebMonth).map(k=>({
     name:(k.name?k.name:'ילד/ה')+' ('+f.name.replace('משפחת','').trim()+')',
-    hebDay:k.hebDay,hebMonth:k.hebMonth
+    hebDay:k.hebDay,hebMonth:k.hebMonth,kind:'birthday'
   })));
   const parentBdays=families.flatMap(f=>{
     const fam=f.name.replace('משפחת','').trim();
     const arr=[];
-    if(f.parent1Bday&&f.parent1Bday.hebDay&&f.parent1Bday.hebMonth)arr.push({name:(f.emailName||'הורה')+' ('+fam+')',hebDay:f.parent1Bday.hebDay,hebMonth:f.parent1Bday.hebMonth});
-    if(f.parent2Bday&&f.parent2Bday.hebDay&&f.parent2Bday.hebMonth)arr.push({name:(f.emailName2||'הורה')+' ('+fam+')',hebDay:f.parent2Bday.hebDay,hebMonth:f.parent2Bday.hebMonth});
+    if(f.parent1Bday&&f.parent1Bday.hebDay&&f.parent1Bday.hebMonth)arr.push({name:(f.emailName||'הורה')+' ('+fam+')',hebDay:f.parent1Bday.hebDay,hebMonth:f.parent1Bday.hebMonth,kind:'birthday'});
+    if(f.parent2Bday&&f.parent2Bday.hebDay&&f.parent2Bday.hebMonth)arr.push({name:(f.emailName2||'הורה')+' ('+fam+')',hebDay:f.parent2Bday.hebDay,hebMonth:f.parent2Bday.hebMonth,kind:'birthday'});
     return arr;
   });
-  return [...kidBdays,...parentBdays];
+  const anniversaries=families.filter(f=>f.anniversary&&f.anniversary.hebDay&&f.anniversary.hebMonth).map(f=>({
+    name:f.name.replace('משפחת','').trim(),
+    hebDay:f.anniversary.hebDay,hebMonth:f.anniversary.hebMonth,kind:'anniversary'
+  }));
+  return [...kidBdays,...parentBdays,...anniversaries];
 }
 async function checkBirthdayNotifs(){
   const all=allBirthdays();
@@ -1057,8 +1061,9 @@ async function checkBirthdayNotifs(){
     const d=new Date(today);d.setDate(d.getDate()+i);
     const hd=parseInt(dayFmt.format(d)),hm=monthFmt.format(d);
     for(const b of all.filter(b=>b.hebDay===hd&&b.hebMonth===hm)){
-      const title=i===0?'🎂 יום הולדת היום!':'🎂 יום הולדת בעוד '+i+' ימים';
-      const body=i===0?'יום הולדת שמח ל'+b.name+'!':'של '+b.name;
+      const isAnniv=b.kind==='anniversary';
+      const title=isAnniv?(i===0?'💍 יום נישואין היום!':'💍 יום נישואין בעוד '+i+' ימים'):(i===0?'🎂 יום הולדת היום!':'🎂 יום הולדת בעוד '+i+' ימים');
+      const body=isAnniv?(i===0?'מזל טוב למשפחת '+b.name+'!':'של משפחת '+b.name):(i===0?'יום הולדת שמח ל'+b.name+'!':'של '+b.name);
       // Every device with notifications on runs this same check
       // independently each day. Claim the (date, offset, person) combo in
       // Firestore first — only the device that wins the claim actually
@@ -1302,7 +1307,7 @@ function renderCalendar(){
       html+=`<div class="${cls}" onclick="selectCalDay('${ds}')">
         <span style="font-size:10px;line-height:1">${label}</span>
         ${hasEv?`<span class="fh-cal-day-ev">${evOnDay.map(c=>c.title.slice(0,5)).join(',')}</span>`:''}
-        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">🎂${bdayOnDay.map(b=>b.name.slice(0,4)).join(',')}</span>`:''}
+        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(b.kind==='anniversary'?'💍':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
       </div>`;
     }
   } else {
@@ -1326,7 +1331,7 @@ function renderCalendar(){
       html+=`<div class="${cls}" onclick="selectCalDay('${ds}')">
         <span style="font-size:12px;line-height:1">${d}</span>
         ${hasEv?`<span class="fh-cal-day-ev">${evOnDay.map(c=>c.title.slice(0,5)).join(',')}</span>`:''}
-        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">🎂${bdayOnDay.map(b=>b.name.slice(0,4)).join(',')}</span>`:''}
+        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(b.kind==='anniversary'?'💍':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
       </div>`;
     }
   }
@@ -1367,10 +1372,11 @@ function renderCalEvList(hebDays,bdayByDate){
       ?HEB_DAY_NUM[parseInt(latDayFmt.format(d))]+' ב'+monthFmt.format(d)+' '+toHebrewYear(hebYNum)
       :d.toLocaleDateString('he-IL',{day:'numeric',month:'long'});
     if(type==='bday'){
+      const isAnniv=item.kind==='anniversary';
       return`<div class="fh-cal-ev">
         <div class="fh-cal-ev-dot" style="background:#c0392b"></div>
         <div class="fh-cal-ev-info">
-          <div class="fh-cal-ev-name">🎂 ${esc(item.name)} — יום הולדת</div>
+          <div class="fh-cal-ev-name">${isAnniv?'💍':'🎂'} ${esc(item.name)} — ${isAnniv?'יום נישואין':'יום הולדת'}</div>
           <div class="fh-cal-ev-date">${lbl}</div>
         </div>
       </div>`;
@@ -2556,12 +2562,17 @@ function renderFamPeopleGrid(){
     ${circle(0,f.emailName||'הורה 1','👤',"openPersonModal('p1')")}
     ${f.parent2Removed?circle(1,'הוסף הורה','+',"openPersonModal('p2')",true):circle(1,f.emailName2||'הורה 2','👤',"openPersonModal('p2')")}
   </div>`;
+  const hasAnniv=!!(f.anniversary&&f.anniversary.hebDay&&f.anniversary.hebMonth);
+  const annivLabel=hasAnniv?(HEB_DAY_NUM[f.anniversary.hebDay]+' ב'+f.anniversary.hebMonth):'הוסף יום נישואין';
+  const annivHtml=`<div style="display:flex;justify-content:center;margin-bottom:18px">
+    ${hasAnniv?circle(2,annivLabel,'💍',"openPersonModal('anniv')"):circle(2,annivLabel,'+',"openPersonModal('anniv')",true)}
+  </div>`;
   let kidsHtml=(f.kids||[]).map((k,i)=>{
     const icon=k.gender==='boy'?'👦':k.gender==='girl'?'👧':'👶';
     return circle(i+2,k.name||'ילד/ה',icon,`openPersonModal('kid',${k.id})`);
   }).join('');
   kidsHtml+=circle(0,'הוסף ילד','+',"openPersonModal('kid')",true);
-  el.innerHTML=parentsHtml
+  el.innerHTML=parentsHtml+annivHtml
     +'<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px">👶 ילדים</div>'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px 8px">'+kidsHtml+'</div>';
 }
@@ -2650,7 +2661,7 @@ function updateKidDateBtn(){
   const btn=document.getElementById('personDateBtn');if(!btn)return;
   if(_kidPickedDate)btn.textContent='📅 '+HEB_DAY_NUM[_kidPickedDate.hebDay]+' ב'+_kidPickedDate.hebMonth+' '+toHebrewYear(_kidPickedDate.hebYear);
   else if(_kidLegacyDate)btn.textContent='📅 '+HEB_DAY_NUM[_kidLegacyDate.hebDay]+' ב'+_kidLegacyDate.hebMonth+' (בחר שוב כדי להוסיף שנה)';
-  else btn.textContent='📅 בחר תאריך לידה';
+  else btn.textContent=_personMode==='anniv'?'📅 בחר תאריך נישואין':'📅 בחר תאריך לידה';
 }
 function clearKidDate(){
   _kidPickedDate=null;
@@ -2750,9 +2761,12 @@ function openPersonModal(mode,kidId){
   const deleteBtn=document.getElementById('personDeleteBtn');
   const title=document.getElementById('personModalTitle');
   const nameInp=document.getElementById('personName');
+  const dateLabel=document.getElementById('personDateLabel');
   if(mode==='p1'||mode==='p2'){
+    nameInp.style.display='block';
     emailWrap.style.display='block';
     genderWrap.style.display='none';
+    if(dateLabel)dateLabel.textContent='תאריך לידה עברי (אופציונלי)';
     const isP1=mode==='p1';
     const email=isP1?f.email:f.email2;
     const bday=isP1?f.parent1Bday:f.parent2Bday;
@@ -2766,9 +2780,22 @@ function openPersonModal(mode,kidId){
     else if(bday&&bday.hebDay&&bday.hebMonth){_kidPickedDate=null;_kidLegacyDate={hebMonth:bday.hebMonth,hebDay:bday.hebDay};}
     else{_kidPickedDate=null;_kidLegacyDate=null;}
     deleteBtn.style.display=isP1?((email||nameInp.value||bday)?'block':'none'):(f.parent2Removed?'none':'block');
+  }else if(mode==='anniv'){
+    nameInp.style.display='none';
+    emailWrap.style.display='none';
+    genderWrap.style.display='none';
+    if(dateLabel)dateLabel.textContent='תאריך נישואין עברי';
+    title.textContent='💍 יום נישואין';
+    const anniv=f.anniversary;
+    if(anniv&&anniv.hebDay&&anniv.hebMonth&&anniv.hebYear){_kidPickedDate={hebYear:anniv.hebYear,hebMonth:anniv.hebMonth,hebDay:anniv.hebDay};_kidLegacyDate=null;}
+    else if(anniv&&anniv.hebDay&&anniv.hebMonth){_kidPickedDate=null;_kidLegacyDate={hebMonth:anniv.hebMonth,hebDay:anniv.hebDay};}
+    else{_kidPickedDate=null;_kidLegacyDate=null;}
+    deleteBtn.style.display=anniv?'block':'none';
   }else{
+    nameInp.style.display='block';
     emailWrap.style.display='none';
     genderWrap.style.display='flex';
+    if(dateLabel)dateLabel.textContent='תאריך לידה עברי (אופציונלי)';
     const k=kidId!=null?(f.kids||[]).find(x=>x.id===kidId):null;
     nameInp.value=k?.name||'';
     setKidGender(k?.gender||'');
@@ -2802,6 +2829,8 @@ function savePerson(){
     }
     const bdayField=isP1?'parent1Bday':'parent2Bday';
     if(bday)f[bdayField]={...bday};else delete f[bdayField];
+  }else if(_personMode==='anniv'){
+    if(bday)f.anniversary={...bday};else delete f.anniversary;
   }else{
     if(!f.kids)f.kids=[];
     if(_personKidId!=null){
@@ -2823,6 +2852,9 @@ function deletePerson(){
     const isP1=_personMode==='p1';
     if(!confirm(isP1?'למחוק את פרטי ההורה?':'להסיר את ההורה השני לגמרי?'))return;
     if(isP1){f.email='';f.emailName='';delete f.parent1Bday;}else{f.email2='';f.emailName2='';delete f.parent2Bday;f.parent2Removed=true;}
+  }else if(_personMode==='anniv'){
+    if(!confirm('למחוק את יום הנישואין?'))return;
+    delete f.anniversary;
   }else{
     if(_personKidId==null)return;
     if(!confirm('למחוק ילד זה?'))return;
