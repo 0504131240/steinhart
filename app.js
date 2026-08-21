@@ -2764,15 +2764,19 @@ function openFamDetail(famId){
       <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:6px">👶 ילדים</div>
       ${f.kids.map(k=>{
         const icon=k.gender==='boy'?'👦':k.gender==='girl'?'👧':'👶';
-        let dateTxt='';
+        let dateTxt='',ageBadge='';
         if(k.hebDay&&k.hebMonth){
           dateTxt=HEB_DAY_NUM[k.hebDay]+' ב'+k.hebMonth+(k.hebYear?' '+toHebrewYear(k.hebYear):'');
           const age=kidAge(k);
-          if(age!=null)dateTxt+=k.gender==='boy'?' (בן '+age+')':k.gender==='girl'?' (בת '+age+')':' ('+age+')';
+          if(age!=null){
+            const txt=k.gender==='boy'?'בן '+age:k.gender==='girl'?'בת '+age:String(age);
+            const style=k.gender==='girl'?'background:#fce7f3;color:#db2777':'background:var(--blue-bg);color:var(--blue)';
+            ageBadge=`<span class="badge" style="${style};margin-inline-start:6px">${esc(txt)}</span>`;
+          }
         }
         return`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)">
           <span style="font-size:13px;color:var(--text)">${icon} ${esc(k.name||'ילד/ה')}</span>
-          <span style="font-size:12px;color:var(--text2)">${dateTxt||'אין תאריך לידה'}</span>
+          <span style="font-size:12px;color:var(--text2)">${dateTxt||'אין תאריך לידה'}${ageBadge}</span>
         </div>`;
       }).join('')}
     </div>`;
