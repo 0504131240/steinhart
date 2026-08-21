@@ -360,7 +360,7 @@ function testEjsEmail(){
   const st=document.getElementById('ejsStatus');if(st){st.textContent=`שולח ל-${addrs.length} כתובות חדשות...`;st.style.color='var(--text2)';}
   let done=0,failed=0;
   addrs.forEach((a,i)=>setTimeout(()=>{
-    emailjs.send(svc,tpl,{to_email:a.email,to_name:a.name,subject:'בדיקת התראות · Steinhart',message:'מייל זה אישר שהתראות מוגדרות בהצלחה באפליקציית Steinhart.'})
+    emailjs.send(svc,tpl,{to_email:a.email,to_name:a.name,subject:'בדיקת התראות · Steinhart',message_html:_emailWrap('<p style="margin:0">מייל זה אישר שהתראות מוגדרות בהצלחה באפליקציית Steinhart.</p>','בדיקת התראות','✅','')})
       .then(()=>{done++;verified.add(a.email);localStorage.setItem('verifiedEmails',JSON.stringify([...verified]));if(done+failed===addrs.length&&st){st.textContent=`✓ נשלח ל-${done} כתובות${failed?` · ${failed} נכשלו`:''}`;st.style.color=failed?'var(--red)':'var(--green)';renderFamList();}})
       .catch(()=>{failed++;if(done+failed===addrs.length&&st){st.textContent=`נשלח ל-${done} · ${failed} נכשלו`;st.style.color='var(--red)';}});
   },i*600));
