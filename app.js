@@ -1268,6 +1268,13 @@ function nextCalMonth(){
   renderCalendar();
 }
 
+function goToTodayCal(){
+  const now=new Date();
+  calYear=now.getFullYear();calMonth=now.getMonth();
+  calHebRefDate=new Date();
+  calSelDay=null;
+  renderCalendar();
+}
 function setCalMode(hebrew){
   if(hebrew&&!calHebrew) calHebRefDate=new Date(calYear,calMonth,15);
   else if(!hebrew&&calHebrew){calYear=calHebRefDate.getFullYear();calMonth=calHebRefDate.getMonth();}
