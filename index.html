@@ -481,15 +481,20 @@
 
 <!-- MAIN SHELL NAV -->
 <div id="main-nav">
-  <button class="mn-icon-btn" onclick="_enterPayShell();goTab('families',null)" title="ניהול משפחות">👥</button>
   <button id="mn-home" class="mn-btn mn-active" onclick="switchShell('home')">
     <span class="mn-in"><span class="mn-ico">🏠</span>בית</span>
   </button>
   <button id="mn-pay" class="mn-btn" onclick="switchShell('pay')">
     <span class="mn-in"><span class="mn-ico">💰</span>תשלומים</span>
   </button>
-  <button class="mn-icon-btn" style="position:relative" onclick="openNotifCenter()" title="התראות">🔔<span id="notifCenterBadge" style="display:none;position:absolute;top:2px;left:2px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:var(--red-mid,#d33);color:#fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;line-height:1"></span></button>
+  <button class="mn-icon-btn" onclick="_enterPayShell();goTab('families',null)" title="ניהול משפחות">👥</button>
 </div>
+
+<!-- Floating notifications button — hidden entirely unless there's something unread -->
+<button id="floatingNotifBtn" onclick="openNotifCenter()" title="התראות" style="display:none;position:fixed;top:14px;left:14px;z-index:400;width:44px;height:44px;border-radius:50%;border:none;background:var(--blue-mid);color:#fff;font-size:19px;box-shadow:0 4px 14px rgba(0,0,0,0.3);cursor:pointer;align-items:center;justify-content:center">
+  🔔
+  <span id="notifCenterBadge" style="position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--red-mid,#d33);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1"></span>
+</button>
 
 <!-- Chat bottom sheet -->
 <div id="chatSheet">
