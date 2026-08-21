@@ -488,7 +488,7 @@
   <button id="mn-pay" class="mn-btn" onclick="switchShell('pay')">
     <span class="mn-in"><span class="mn-ico">💰</span>תשלומים</span>
   </button>
-  <button class="mn-icon-btn" onclick="_enterPayShell();goTab('families',null)" title="ניהול משפחות">👥</button>
+  <button class="mn-icon-btn" onclick="openFamiliesFromHome()" title="ניהול משפחות">👥</button>
 </div>
 
 <!-- Floating notifications button — hidden entirely unless there's something unread -->
@@ -496,6 +496,22 @@
   🔔
   <span id="notifCenterBadge" style="position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:var(--red-mid,#d33);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1"></span>
 </button>
+
+<!-- Family management — lightweight home-screen overlay -->
+<div id="familiesHomeOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeFamiliesHomeOverlay()">
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:0;width:100%;max-width:400px;max-height:85vh;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:16px 18px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:15px;font-weight:800;color:var(--text)">👥 ניהול משפחות</span>
+      <button onclick="closeFamiliesHomeOverlay()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);line-height:1;padding:0">✕</button>
+    </div>
+    <div style="padding:14px 18px;overflow-y:auto;flex:1;min-height:0">
+      <div id="famListHome"></div>
+    </div>
+    <div class="edit-only" style="padding:12px 18px;border-top:1px solid var(--border);flex-shrink:0;text-align:center">
+      <button onclick="closeFamiliesHomeOverlay();_enterPayShell();goTab('families',null)" style="background:none;border:none;color:var(--text2);font-size:12px;font-family:var(--font);cursor:pointer;text-decoration:underline">⚙️ עוד הגדרות למנהל (מייל, גזבר, הודעה לכולם)</button>
+    </div>
+  </div>
+</div>
 
 <!-- Chat bottom sheet -->
 <div id="chatSheet">
