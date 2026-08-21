@@ -1082,6 +1082,10 @@ function _bmLabel(item,occHebYear){
   if(item.gender==='girl'&&n===12)return'בת מצווה';
   return'';
 }
+// Small inline tefillin glyph — no such emoji exists in Unicode, so this
+// stands in for it wherever a bar/bat mitzvah is marked (sized to sit inline
+// with surrounding emoji at ~1em).
+const TEFILLIN_SVG='<svg viewBox="0 0 20 20" width="1em" height="1em" style="vertical-align:-0.15em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="1.5" width="15" height="15" rx="2" fill="#2b2b2b"/><text x="12.5" y="12.3" font-size="10.5" fill="#fff" text-anchor="middle" font-family="serif" font-weight="bold">ש</text><path d="M5 12 Q1 12 1 17 Q1 19.5 4 19.5" stroke="#8a6d4a" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>';
 async function checkBirthdayNotifs(){
   const all=allBirthdays();
   if(!_notifOk()||!all.length)return;
@@ -1394,7 +1398,7 @@ function renderCalendar(){
       html+=`<div class="${cls}" onclick="selectCalDay('${ds}')">
         <span style="font-size:10px;line-height:1">${label}</span>
         ${hasEv?`<span class="fh-cal-day-ev">${evOnDay.map(c=>c.title.slice(0,5)).join(',')}</span>`:''}
-        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(_bmLabel(b,dayHebYear)?'📜':b.kind==='anniversary'?'💍':b.kind==='yahrzeit'?'🕯️':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
+        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(_bmLabel(b,dayHebYear)?TEFILLIN_SVG:b.kind==='anniversary'?'💍':b.kind==='yahrzeit'?'🕯️':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
       </div>`;
     }
   } else {
@@ -1419,7 +1423,7 @@ function renderCalendar(){
       html+=`<div class="${cls}" onclick="selectCalDay('${ds}')">
         <span style="font-size:12px;line-height:1">${d}</span>
         ${hasEv?`<span class="fh-cal-day-ev">${evOnDay.map(c=>c.title.slice(0,5)).join(',')}</span>`:''}
-        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(_bmLabel(b,dayHebYear)?'📜':b.kind==='anniversary'?'💍':b.kind==='yahrzeit'?'🕯️':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
+        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(_bmLabel(b,dayHebYear)?TEFILLIN_SVG:b.kind==='anniversary'?'💍':b.kind==='yahrzeit'?'🕯️':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
       </div>`;
     }
   }
@@ -1464,7 +1468,7 @@ function renderCalEvList(hebDays,bdayByDate){
       const isYahrzeit=item.kind==='yahrzeit';
       const ageLbl=_ageLabel(item,hebYNum);
       const bm=_bmLabel(item,hebYNum);
-      const icon=bm?'📜':isYahrzeit?`<span class="flame-flicker">🕯️</span>`:isAnniv?'💍':'🎂';
+      const icon=bm?TEFILLIN_SVG:isYahrzeit?`<span class="flame-flicker">🕯️</span>`:isAnniv?'💍':'🎂';
       const label=bm||(isYahrzeit?'יארצייט':isAnniv?'יום נישואין':'יום הולדת');
       return`<div class="fh-cal-ev"${isYahrzeit?` onclick="openYahrzeitModal(${item.id})" style="cursor:pointer"`:''}>
         <div class="fh-cal-ev-dot" style="background:#c0392b"></div>
