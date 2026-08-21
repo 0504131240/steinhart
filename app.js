@@ -1072,6 +1072,16 @@ function _ageLabel(item,occHebYear){
   if(item.gender==='girl')return' (בת '+n+')';
   return' ('+n+')';
 }
+// The one specific birthday occurrence a bar/bat mitzvah lands on — a boy
+// turning 13, a girl turning 12 — so the calendar can call it what it is
+// instead of a generic birthday, without touching any other year.
+function _bmLabel(item,occHebYear){
+  if(item.kind!=='birthday'||!item.hebYear||!occHebYear)return'';
+  const n=occHebYear-item.hebYear;
+  if(item.gender==='boy'&&n===13)return'בר מצווה';
+  if(item.gender==='girl'&&n===12)return'בת מצווה';
+  return'';
+}
 async function checkBirthdayNotifs(){
   const all=allBirthdays();
   if(!_notifOk()||!all.length)return;
@@ -1088,9 +1098,11 @@ async function checkBirthdayNotifs(){
     for(const b of all.filter(b=>b.hebDay===hd&&b.hebMonth===hm)){
       const isAnniv=b.kind==='anniversary';
       const isYahrzeit=b.kind==='yahrzeit';
-      const ageLbl=_ageLabel(b,parseInt(yearFmt.format(d)));
-      const title=isYahrzeit?(i===0?'🕯️ יארצייט היום':'🕯️ יארצייט בעוד '+i+' ימים'):isAnniv?(i===0?'💍 יום נישואין היום!':'💍 יום נישואין בעוד '+i+' ימים'):(i===0?'🎂 יום הולדת היום!':'🎂 יום הולדת בעוד '+i+' ימים');
-      const body=isYahrzeit?(i===0?'היום היארצייט של '+b.name+ageLbl:'של '+b.name+ageLbl):isAnniv?(i===0?'מזל טוב למשפחת '+b.name+ageLbl+'!':'של משפחת '+b.name+ageLbl):(i===0?'יום הולדת שמח ל'+b.name+ageLbl+'!':'של '+b.name+ageLbl);
+      const occHebYear=parseInt(yearFmt.format(d));
+      const ageLbl=_ageLabel(b,occHebYear);
+      const bm=_bmLabel(b,occHebYear);
+      const title=bm?(i===0?'📜 '+bm+' היום!':'📜 '+bm+' בעוד '+i+' ימים'):isYahrzeit?(i===0?'🕯️ יארצייט היום':'🕯️ יארצייט בעוד '+i+' ימים'):isAnniv?(i===0?'💍 יום נישואין היום!':'💍 יום נישואין בעוד '+i+' ימים'):(i===0?'🎂 יום הולדת היום!':'🎂 יום הולדת בעוד '+i+' ימים');
+      const body=bm?(i===0?'מזל טוב ל'+b.name+ageLbl+'! היום ה'+bm+' שלו/ה':'ה'+bm+' של '+b.name+ageLbl):isYahrzeit?(i===0?'היום היארצייט של '+b.name+ageLbl:'של '+b.name+ageLbl):isAnniv?(i===0?'מזל טוב למשפחת '+b.name+ageLbl+'!':'של משפחת '+b.name+ageLbl):(i===0?'יום הולדת שמח ל'+b.name+ageLbl+'!':'של '+b.name+ageLbl);
       // Every device with notifications on runs this same check
       // independently each day. Claim the (date, offset, person) combo in
       // Firestore first — only the device that wins the claim actually
@@ -1371,6 +1383,7 @@ function renderCalendar(){
       const hebDayNumInt=parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{day:'numeric'}).format(dayDate));
       const label=HEB_DAY_NUM[hebDayNumInt]||String(hebDayNumInt);
       const hebMonthName=new Intl.DateTimeFormat('he-IL-u-ca-hebrew',{month:'long'}).format(dayDate);
+      const dayHebYear=parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{year:'numeric'}).format(dayDate));
       const isToday=ds===todayStr;
       const isSel=calSelDay===ds&&!isToday;
       const evOnDay=calItems.filter(c=>c.date===ds);
@@ -1381,7 +1394,7 @@ function renderCalendar(){
       html+=`<div class="${cls}" onclick="selectCalDay('${ds}')">
         <span style="font-size:10px;line-height:1">${label}</span>
         ${hasEv?`<span class="fh-cal-day-ev">${evOnDay.map(c=>c.title.slice(0,5)).join(',')}</span>`:''}
-        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(b.kind==='anniversary'?'💍':b.kind==='yahrzeit'?'🕯️':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
+        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(_bmLabel(b,dayHebYear)?'📜':b.kind==='anniversary'?'💍':b.kind==='yahrzeit'?'🕯️':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
       </div>`;
     }
   } else {
@@ -1395,6 +1408,7 @@ function renderCalendar(){
       const dayDate=new Date(calYear,calMonth,d);
       const hebDayNumInt=parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{day:'numeric'}).format(dayDate));
       const hebMonthName=new Intl.DateTimeFormat('he-IL-u-ca-hebrew',{month:'long'}).format(dayDate);
+      const dayHebYear=parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{year:'numeric'}).format(dayDate));
       const isToday=ds===todayStr;
       const isSel=calSelDay===ds&&!isToday;
       const evOnDay=calItems.filter(c=>c.date===ds);
@@ -1405,7 +1419,7 @@ function renderCalendar(){
       html+=`<div class="${cls}" onclick="selectCalDay('${ds}')">
         <span style="font-size:12px;line-height:1">${d}</span>
         ${hasEv?`<span class="fh-cal-day-ev">${evOnDay.map(c=>c.title.slice(0,5)).join(',')}</span>`:''}
-        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(b.kind==='anniversary'?'💍':b.kind==='yahrzeit'?'🕯️':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
+        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(_bmLabel(b,dayHebYear)?'📜':b.kind==='anniversary'?'💍':b.kind==='yahrzeit'?'🕯️':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
       </div>`;
     }
   }
@@ -1449,8 +1463,9 @@ function renderCalEvList(hebDays,bdayByDate){
       const isAnniv=item.kind==='anniversary';
       const isYahrzeit=item.kind==='yahrzeit';
       const ageLbl=_ageLabel(item,hebYNum);
-      const icon=isYahrzeit?`<span class="flame-flicker">🕯️</span>`:isAnniv?'💍':'🎂';
-      const label=isYahrzeit?'יארצייט':isAnniv?'יום נישואין':'יום הולדת';
+      const bm=_bmLabel(item,hebYNum);
+      const icon=bm?'📜':isYahrzeit?`<span class="flame-flicker">🕯️</span>`:isAnniv?'💍':'🎂';
+      const label=bm||(isYahrzeit?'יארצייט':isAnniv?'יום נישואין':'יום הולדת');
       return`<div class="fh-cal-ev"${isYahrzeit?` onclick="openYahrzeitModal(${item.id})" style="cursor:pointer"`:''}>
         <div class="fh-cal-ev-dot" style="background:#c0392b"></div>
         <div class="fh-cal-ev-info">
