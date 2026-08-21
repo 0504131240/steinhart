@@ -3935,11 +3935,18 @@ function renderVisitLog(){
 // to the admin (money movement, family self-edits) but would just be noise
 // for every other family member's phone.
 function addNotif(icon,text,pushTarget){
-  notifications.unshift({id:nxtNotif++,icon,text,ts:Date.now()});
+  // pushTarget:'admin' already meant "only the admin device should get a
+  // push for this" — but the in-app notification center (bell badge + list)
+  // showed every entry to every family member regardless, so an admin-only
+  // event (a family editing their own info, a payment confirmation) still
+  // showed up for everyone there. Tagging the entry itself with the same
+  // audience lets the center filter it out for non-admin viewers too.
+  notifications.unshift({id:nxtNotif++,icon,text,ts:Date.now(),audience:pushTarget==='admin'?'admin':'all'});
   if(notifications.length>200)notifications.length=200;
   renderNotifCenterBadge();
   _sendPush(icon+' Steinhart',text,pushTarget);
 }
+const _visibleNotifs=()=>editMode?notifications:notifications.filter(n=>n.audience!=='admin');
 // Fires a real device push (via the /api/notify Vercel function → FCM) for
 // every in-app notification-center event, so family members get it even
 // when the app is closed — not just the in-app bell. Best-effort: silently
@@ -3951,7 +3958,7 @@ function _notifLastSeen(){return parseInt(localStorage.getItem('notifLastSeen')|
 function renderNotifCenterBadge(){
   const badge=document.getElementById('notifCenterBadge');if(!badge)return;
   const seen=_notifLastSeen();
-  const unread=notifications.filter(n=>n.ts>seen).length;
+  const unread=_visibleNotifs().filter(n=>n.ts>seen).length;
   if(unread>0){badge.style.display='flex';badge.textContent=unread>99?'99+':String(unread);}
   else badge.style.display='none';
 }
@@ -3959,7 +3966,8 @@ function openNotifCenter(){
   const modal=document.getElementById('notifCenterModal');if(!modal)return;
   const list=document.getElementById('notifCenterList');
   if(list){
-    list.innerHTML=notifications.length?notifications.map(n=>`
+    const visible=_visibleNotifs();
+    list.innerHTML=visible.length?visible.map(n=>`
       <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
         <span style="font-size:18px;flex-shrink:0">${n.icon||'🔔'}</span>
         <div style="flex:1;min-width:0">
