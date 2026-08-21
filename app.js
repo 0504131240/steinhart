@@ -1096,6 +1096,22 @@ async function checkBirthdayNotifs(){
   }
 }
 
+// Every shared collection here can be edited in place, not just appended to
+// (a family's photo, an event's cost, a countdown's date...), so there's no
+// single id/count to diff against — a plain JSON compare against what's
+// already in memory is what actually catches an in-place change. Without
+// this, a tab left open with any of these gone stale would silently
+// overwrite someone else's just-saved edit the next time *anything* on that
+// page calls save() — save() always pushes the whole document, including
+// whatever happens to be sitting in memory. Messages are the one truly
+// append-only exception (chat isn't edited after the fact), so that one
+// keeps the cheaper max-id check.
+function _adoptIfChanged(snapVal,getLocal,setLocal,recount){
+  if(JSON.stringify(snapVal)===JSON.stringify(getLocal()))return false;
+  setLocal(snapVal);
+  if(recount)recount();
+  return true;
+}
 async function startRealtimeSync(){
   if(_realtimeUnsub)return;
   try{
@@ -1103,8 +1119,8 @@ async function startRealtimeSync(){
     _realtimeUnsub=onSnapshot(doc(db,'appData','familyPayments'),snap=>{
       if(!snap.exists())return;
       const d=snap.data();
-      const snapMsgs=d.messages||[];
       if(!_initialSync&&!_saving){
+        const snapMsgs=d.messages||[];
         const snapMax=snapMsgs.length?Math.max(...snapMsgs.map(m=>m.id)):0;
         const localMax=messages.length?Math.max(...messages.map(m=>m.id)):0;
         if(snapMax!==localMax){
@@ -1112,20 +1128,28 @@ async function startRealtimeSync(){
           nxtMsg=messages.length?Math.max(...messages.map(m=>m.id))+1:1;
           renderMessages();
         }
-        // Families aren't append-only like messages (edits happen in place —
-        // a new photo, a name change), so there's no id/count to diff against.
-        // Without this, a tab left open with a stale in-memory `families`
-        // would silently overwrite someone else's just-saved edit (a photo,
-        // an anniversary date...) the next time *anything* on this page
-        // calls save() — save() always pushes the whole document, including
-        // whatever `families` happens to be sitting in memory. Adopting the
-        // remote copy whenever it actually differs closes that window.
-        const snapFamilies=d.families||[];
-        if(JSON.stringify(snapFamilies)!==JSON.stringify(families)){
-          families=snapFamilies;
-          nxtFam=families.length?Math.max(...families.map(f=>f.id))+1:1;
-          render();
-        }
+        let changed=false;
+        changed=_adoptIfChanged(d.families||[],()=>families,v=>families=v,
+          ()=>{nxtFam=families.length?Math.max(...families.map(f=>f.id))+1:1;})||changed;
+        changed=_adoptIfChanged(d.events||[],()=>events,v=>events=v,
+          ()=>{nxtId=events.length?Math.max(...events.map(e=>e.id))+1:1;})||changed;
+        changed=_adoptIfChanged(d.fund||{famBalances:{},transactions:[]},()=>fund,v=>fund=v,
+          ()=>{if(!fund.famBalances)fund.famBalances={};nxtTx=(fund.transactions||[]).length?Math.max(...fund.transactions.map(t=>t.id))+1:1;})||changed;
+        changed=_adoptIfChanged(d.goalFunds||[],()=>goalFunds,v=>goalFunds=v,
+          ()=>{nxtGoal=goalFunds.length?Math.max(...goalFunds.map(g=>g.id))+1:1;})||changed;
+        changed=_adoptIfChanged(d.calItems||[],()=>calItems,v=>calItems=v,
+          ()=>{nxtCal=calItems.length?Math.max(...calItems.map(c=>c.id))+1:1;})||changed;
+        changed=_adoptIfChanged(d.paymentClaims||[],()=>paymentClaims,v=>paymentClaims=v,
+          ()=>{nxtClaim=paymentClaims.length?Math.max(...paymentClaims.map(c=>c.id))+1:1;})||changed;
+        changed=_adoptIfChanged(d.visits||[],()=>visits,v=>visits=v)||changed;
+        changed=_adoptIfChanged(d.notifications||[],()=>notifications,v=>notifications=v,
+          ()=>{nxtNotif=notifications.length?Math.max(...notifications.map(n=>n.id))+1:1;})||changed;
+        changed=_adoptIfChanged(d.polls||[],()=>polls,v=>polls=v,
+          ()=>{nxtPoll=polls.length?Math.max(...polls.map(p=>p.id))+1:1;})||changed;
+        changed=_adoptIfChanged(d.countdowns||[],()=>countdowns,v=>countdowns=v,
+          ()=>{nxtCountdown=countdowns.length?Math.max(...countdowns.map(c=>c.id))+1:1;})||changed;
+        if((d.adminPass||'')!==adminPass){adminPass=d.adminPass||'';}
+        if(changed)render();
       }
       _initialSync=false;
     });
