@@ -1079,7 +1079,7 @@ function _ageLabel(item,occHebYear){
 function _bdayAgeBadge(item,occHebYear){
   if(item.kind!=='birthday'||!item.hebYear||!occHebYear)return'';
   const n=occHebYear-item.hebYear;
-  if(n<=0)return'';
+  if(n<=0||n>18)return'';
   const txt=item.gender==='boy'?'בן '+n:item.gender==='girl'?'בת '+n:String(n);
   return`<span class="bday-balloon">${esc(txt)}</span>`;
 }
@@ -2768,7 +2768,7 @@ function openFamDetail(famId){
         if(k.hebDay&&k.hebMonth){
           dateTxt=HEB_DAY_NUM[k.hebDay]+' ב'+k.hebMonth+(k.hebYear?' '+toHebrewYear(k.hebYear):'');
           const age=kidAge(k);
-          if(age!=null){
+          if(age!=null&&age<=18){
             const txt=k.gender==='boy'?'בן '+age:k.gender==='girl'?'בת '+age:String(age);
             ageBadge=`<span class="bday-balloon">${esc(txt)}</span>`;
           }
