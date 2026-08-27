@@ -200,7 +200,7 @@ async function fbInit(){
   const fsMod=await import("https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js");
   _fbApp=appMod.initializeApp(firebaseConfig);
   const db=fsMod.getFirestore(_fbApp);
-  _fb={db,doc:fsMod.doc,getDoc:fsMod.getDoc,setDoc:fsMod.setDoc,onSnapshot:fsMod.onSnapshot,collection:fsMod.collection,runTransaction:fsMod.runTransaction};
+  _fb={db,doc:fsMod.doc,getDoc:fsMod.getDoc,setDoc:fsMod.setDoc,onSnapshot:fsMod.onSnapshot,collection:fsMod.collection};
   return _fb;
 }
 
@@ -1012,7 +1012,6 @@ async function requestNotifPerm(){
   renderNotifBtn();
   if(p==='granted'){
     showNotif('Steinhart 🔔','התראות הופעלו! תקבלו עדכונים על הודעות, הוצאות וימי הולדת.');
-    checkBirthdayNotifs();
     registerFCMToken().then(()=>{}).catch(e=>alert('שגיאת התראות: '+e.message));
   }
 }
@@ -1097,51 +1096,10 @@ function _bmLabel(item,occHebYear){
 // stands in for it wherever a bar/bat mitzvah is marked (sized to sit inline
 // with surrounding emoji at ~1em).
 const TEFILLIN_SVG='<svg viewBox="0 0 20 20" width="1em" height="1em" style="vertical-align:-0.15em;flex-shrink:0" xmlns="http://www.w3.org/2000/svg"><rect x="5" y="1.5" width="15" height="15" rx="2" fill="#2b2b2b"/><text x="12.5" y="12.3" font-size="10.5" fill="#fff" text-anchor="middle" font-family="serif" font-weight="bold">ש</text><path d="M5 12 Q1 12 1 17 Q1 19.5 4 19.5" stroke="#8a6d4a" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>';
-async function checkBirthdayNotifs(){
-  const all=allBirthdays();
-  if(!_notifOk()||!all.length)return;
-  const today=new Date(),todayStr=today.toDateString();
-  if(localStorage.getItem('bdayNotifDate')===todayStr)return;
-  localStorage.setItem('bdayNotifDate',todayStr);
-  const dayFmt=new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{day:'numeric'});
-  const monthFmt=new Intl.DateTimeFormat('he-IL-u-ca-hebrew',{month:'long'});
-  const yearFmt=new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{year:'numeric'});
-  const {db,doc,runTransaction}=await fbInit();
-  for(let i=0;i<=1;i++){
-    const d=new Date(today);d.setDate(d.getDate()+i);
-    const hd=parseInt(dayFmt.format(d)),hm=monthFmt.format(d);
-    for(const b of all.filter(b=>b.hebDay===hd&&b.hebMonth===hm)){
-      const isAnniv=b.kind==='anniversary';
-      const isYahrzeit=b.kind==='yahrzeit';
-      const occHebYear=parseInt(yearFmt.format(d));
-      const ageLbl=_ageLabel(b,occHebYear);
-      const bm=_bmLabel(b,occHebYear);
-      const title=bm?(i===0?'📜 '+bm+' היום!':'📜 '+bm+' מחר'):isYahrzeit?(i===0?'🕯️ יארצייט היום':'🕯️ יארצייט מחר'):isAnniv?(i===0?'💍 יום נישואין היום!':'💍 יום נישואין מחר'):(i===0?'🎂 יום הולדת היום!':'🎂 יום הולדת מחר');
-      const body=bm?(i===0?'מזל טוב ל'+b.name+ageLbl+'! היום ה'+bm+' שלו/ה':'מחר ה'+bm+' של '+b.name+ageLbl):isYahrzeit?(i===0?'היום היארצייט של '+b.name+ageLbl:'מחר היארצייט של '+b.name+ageLbl):isAnniv?(i===0?'מזל טוב למשפחת '+b.name+ageLbl+'!':'מחר יום הנישואין של משפחת '+b.name+ageLbl):(i===0?'יום הולדת שמח ל'+b.name+ageLbl+'!':'מחר יום ההולדת של '+b.name+ageLbl);
-      // Every device with notifications on runs this same check
-      // independently each day. Claim the (date, offset, person) combo in
-      // Firestore first — only the device that wins the claim actually
-      // pushes, so the same birthday doesn't get broadcast to everyone
-      // once per open device. A transaction (not a plain get-then-set) is
-      // required here — two devices loading the app within moments of each
-      // other would otherwise both read "no claim yet" before either writes,
-      // and both send, which is exactly how duplicate pushes happened.
-      const claimId=(todayStr+'_'+i+'_'+b.name).replace(/[^a-zA-Z0-9א-ת]+/g,'_').slice(0,300);
-      let won=false;
-      try{
-        const ref=doc(db,'bdayNotifClaims',claimId);
-        won=await runTransaction(db,async tx=>{
-          const snap=await tx.get(ref);
-          if(snap.exists())return false;
-          tx.set(ref,{ts:Date.now()});
-          return true;
-        });
-      }catch(e){continue;}
-      if(!won)continue;
-      _sendPush(title,body);
-    }
-  }
-}
+// Birthday/anniversary/yahrzeit push reminders are sent server-side now
+// (api/cron/daily-backup.js, once a day) instead of from here — the old
+// client-side check only ran when someone happened to have the app open
+// that day, so it could silently miss the exact day if nobody did.
 
 // Every shared collection here can be edited in place, not just appended to
 // (a family's photo, an event's cost, a countdown's date...), so there's no
@@ -5823,7 +5781,7 @@ async function _updateCustomTotal(){
 }
 
 applyEditMode();
-load().then(async()=>{await autoUnlockAdmin();if(window.location.hash)handleHash();startRealtimeSync();startFormImportSync();renderNotifBtn();if(_notifOk()){checkBirthdayNotifs();registerFCMToken();}});
+load().then(async()=>{await autoUnlockAdmin();if(window.location.hash)handleHash();startRealtimeSync();startFormImportSync();renderNotifBtn();if(_notifOk()){registerFCMToken();}});
 loadEjsSettings();
 loadPaymentSettings();
 window.addEventListener('hashchange',handleHash);
