@@ -200,7 +200,7 @@ async function fbInit(){
   const fsMod=await import("https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js");
   _fbApp=appMod.initializeApp(firebaseConfig);
   const db=fsMod.getFirestore(_fbApp);
-  _fb={db,doc:fsMod.doc,getDoc:fsMod.getDoc,setDoc:fsMod.setDoc,onSnapshot:fsMod.onSnapshot,collection:fsMod.collection};
+  _fb={db,doc:fsMod.doc,getDoc:fsMod.getDoc,setDoc:fsMod.setDoc,onSnapshot:fsMod.onSnapshot,collection:fsMod.collection,runTransaction:fsMod.runTransaction};
   return _fb;
 }
 
@@ -1106,7 +1106,7 @@ async function checkBirthdayNotifs(){
   const dayFmt=new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{day:'numeric'});
   const monthFmt=new Intl.DateTimeFormat('he-IL-u-ca-hebrew',{month:'long'});
   const yearFmt=new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{year:'numeric'});
-  const {db,doc,getDoc,setDoc}=await fbInit();
+  const {db,doc,runTransaction}=await fbInit();
   for(let i=0;i<=1;i++){
     const d=new Date(today);d.setDate(d.getDate()+i);
     const hd=parseInt(dayFmt.format(d)),hm=monthFmt.format(d);
@@ -1122,13 +1122,22 @@ async function checkBirthdayNotifs(){
       // independently each day. Claim the (date, offset, person) combo in
       // Firestore first — only the device that wins the claim actually
       // pushes, so the same birthday doesn't get broadcast to everyone
-      // once per open device.
+      // once per open device. A transaction (not a plain get-then-set) is
+      // required here — two devices loading the app within moments of each
+      // other would otherwise both read "no claim yet" before either writes,
+      // and both send, which is exactly how duplicate pushes happened.
       const claimId=(todayStr+'_'+i+'_'+b.name).replace(/[^a-zA-Z0-9א-ת]+/g,'_').slice(0,300);
+      let won=false;
       try{
         const ref=doc(db,'bdayNotifClaims',claimId);
-        if((await getDoc(ref)).exists())continue;
-        await setDoc(ref,{ts:Date.now()});
+        won=await runTransaction(db,async tx=>{
+          const snap=await tx.get(ref);
+          if(snap.exists())return false;
+          tx.set(ref,{ts:Date.now()});
+          return true;
+        });
       }catch(e){continue;}
+      if(!won)continue;
       _sendPush(title,body);
     }
   }
