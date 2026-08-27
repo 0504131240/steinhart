@@ -4443,6 +4443,11 @@ function renderGoalFunds(){
     const total=goalTotal(g);
     const pct=g.target>0?Math.min(100,Math.round(total/g.target*100)):0;
     const reached=g.target>0&&total>=g.target;
+    // Always an equal split among families that can actually see this fund —
+    // never per-capita/weighted like events, and never counting a family
+    // this fund is hidden from (they're the surprise, not a payer).
+    const eligibleCount=families.filter(f=>!(g.hiddenFrom||[]).includes(f.id)).length;
+    const perFamily=g.target>0&&eligibleCount>0?Math.ceil(g.target/eligibleCount):0;
     const contributors=families.filter(f=>(g.contributions[f.id]||0)>0);
     const contribHtml=contributors.length?`
       <div style="border-top:1px solid rgba(255,255,255,0.15);padding-top:9px;margin-top:10px">
@@ -4466,7 +4471,8 @@ function renderGoalFunds(){
         <div style="font-size:30px;font-weight:800;color:#fff;letter-spacing:-0.5px">${total>0?'₪'+total.toLocaleString():'₪0'}</div>
         ${g.target>0?`
           <div class="pbar" style="margin:8px 0 3px;background:rgba(255,255,255,0.2)"><div class="pfill ${reached?'full':'part'}" style="width:${pct}%"></div></div>
-          <div style="font-size:11px;color:rgba(255,255,255,0.55)">מתוך ₪${g.target.toLocaleString()} · ${pct}%</div>`:''}
+          <div style="font-size:11px;color:rgba(255,255,255,0.55)">מתוך ₪${g.target.toLocaleString()} · ${pct}%</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.55);margin-top:4px">💳 כל משפחה: ₪${perFamily.toLocaleString()} (חלוקה שווה בין ${eligibleCount} משפחות)</div>`:''}
         ${contribHtml}
       </div>
       <div style="padding:10px 12px">
