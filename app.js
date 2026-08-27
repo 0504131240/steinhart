@@ -1116,8 +1116,8 @@ async function checkBirthdayNotifs(){
       const occHebYear=parseInt(yearFmt.format(d));
       const ageLbl=_ageLabel(b,occHebYear);
       const bm=_bmLabel(b,occHebYear);
-      const title=bm?(i===0?'📜 '+bm+' היום!':'📜 '+bm+' בעוד '+i+' ימים'):isYahrzeit?(i===0?'🕯️ יארצייט היום':'🕯️ יארצייט בעוד '+i+' ימים'):isAnniv?(i===0?'💍 יום נישואין היום!':'💍 יום נישואין בעוד '+i+' ימים'):(i===0?'🎂 יום הולדת היום!':'🎂 יום הולדת בעוד '+i+' ימים');
-      const body=bm?(i===0?'מזל טוב ל'+b.name+ageLbl+'! היום ה'+bm+' שלו/ה':'ה'+bm+' של '+b.name+ageLbl):isYahrzeit?(i===0?'היום היארצייט של '+b.name+ageLbl:'של '+b.name+ageLbl):isAnniv?(i===0?'מזל טוב למשפחת '+b.name+ageLbl+'!':'של משפחת '+b.name+ageLbl):(i===0?'יום הולדת שמח ל'+b.name+ageLbl+'!':'של '+b.name+ageLbl);
+      const title=bm?(i===0?'📜 '+bm+' היום!':'📜 '+bm+' מחר'):isYahrzeit?(i===0?'🕯️ יארצייט היום':'🕯️ יארצייט מחר'):isAnniv?(i===0?'💍 יום נישואין היום!':'💍 יום נישואין מחר'):(i===0?'🎂 יום הולדת היום!':'🎂 יום הולדת מחר');
+      const body=bm?(i===0?'מזל טוב ל'+b.name+ageLbl+'! היום ה'+bm+' שלו/ה':'מחר ה'+bm+' של '+b.name+ageLbl):isYahrzeit?(i===0?'היום היארצייט של '+b.name+ageLbl:'מחר היארצייט של '+b.name+ageLbl):isAnniv?(i===0?'מזל טוב למשפחת '+b.name+ageLbl+'!':'מחר יום הנישואין של משפחת '+b.name+ageLbl):(i===0?'יום הולדת שמח ל'+b.name+ageLbl+'!':'מחר יום ההולדת של '+b.name+ageLbl);
       // Every device with notifications on runs this same check
       // independently each day. Claim the (date, offset, person) combo in
       // Firestore first — only the device that wins the claim actually
