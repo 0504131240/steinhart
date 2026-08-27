@@ -3998,25 +3998,33 @@ function renderVisitLog(){
 // reaches only devices registered from admin.html — for events that matter
 // to the admin (money movement, family self-edits) but would just be noise
 // for every other family member's phone.
-function addNotif(icon,text,pushTarget){
+// hiddenFromFamIds: families that shouldn't see this notification at all —
+// neither the in-app bell/list nor the device push — e.g. a surprise-gift
+// goal fund announced to everyone except the family it's for.
+function addNotif(icon,text,pushTarget,hiddenFromFamIds){
   // pushTarget:'admin' already meant "only the admin device should get a
   // push for this" — but the in-app notification center (bell badge + list)
   // showed every entry to every family member regardless, so an admin-only
   // event (a family editing their own info, a payment confirmation) still
   // showed up for everyone there. Tagging the entry itself with the same
   // audience lets the center filter it out for non-admin viewers too.
-  notifications.unshift({id:nxtNotif++,icon,text,ts:Date.now(),audience:pushTarget==='admin'?'admin':'all'});
+  notifications.unshift({id:nxtNotif++,icon,text,ts:Date.now(),audience:pushTarget==='admin'?'admin':'all',hiddenFrom:hiddenFromFamIds&&hiddenFromFamIds.length?hiddenFromFamIds:undefined});
   if(notifications.length>200)notifications.length=200;
   renderNotifCenterBadge();
-  _sendPush(icon+' Steinhart',text,pushTarget);
+  _sendPush(icon+' Steinhart',text,pushTarget,hiddenFromFamIds);
 }
-const _visibleNotifs=()=>editMode?notifications:notifications.filter(n=>n.audience!=='admin');
+const _visibleNotifs=()=>{
+  const list=editMode?notifications:notifications.filter(n=>n.audience!=='admin');
+  if(editMode)return list;
+  const myId=_myFamId();
+  return list.filter(n=>!(n.hiddenFrom||[]).includes(myId));
+};
 // Fires a real device push (via the /api/notify Vercel function → FCM) for
 // every in-app notification-center event, so family members get it even
 // when the app is closed — not just the in-app bell. Best-effort: silently
 // ignored if it fails (e.g. offline, or the API route isn't deployed yet).
-function _sendPush(title,body,target){
-  fetch('/api/notify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminPass,title,body,target:target||'all'})}).catch(()=>{});
+function _sendPush(title,body,target,excludeFamIds){
+  fetch('/api/notify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({adminPass,title,body,target:target||'all',excludeFamIds})}).catch(()=>{});
 }
 function _notifLastSeen(){return parseInt(localStorage.getItem('notifLastSeen')||'0');}
 function renderNotifCenterBadge(){
@@ -4341,6 +4349,7 @@ function addGoalFund(){
   if(!name){ alert('נא להזין שם לקופה'); return; }
   const target=Math.max(0,parseFloat(document.getElementById('goalTarget').value)||0);
   goalFunds.push({id:nxtGoal++,name,target,contributions:{},closed:false,archived:false,hiddenFrom:[..._goalHideFamIds]});
+  addNotif('🎯','נוצרה קופה חדשה: '+name,'all',[..._goalHideFamIds]);
   closeGoalForm();
   save();render();
 }
