@@ -4461,7 +4461,7 @@ function renderGoalFunds(){
           </div>`;
         }).join('')}
       </div>`:'';
-    return`<div class="fund-settle-card" id="gfund-${g.id}" style="margin-bottom:14px;${g.closed?'opacity:.6':''}">
+    return`<div class="fund-settle-card" id="gfund-${g.id}" onclick="openGoalPayModal(${g.id})" style="margin-bottom:14px;cursor:pointer;${g.closed?'opacity:.6':''}">
       <div style="background:var(--text);border-radius:var(--r) var(--r) 0 0;padding:16px 16px 13px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px">
           <div style="font-size:15px;font-weight:800;color:#fff">🎯 ${esc(g.name)}</div>
@@ -4475,7 +4475,7 @@ function renderGoalFunds(){
           <div style="font-size:11px;color:rgba(255,255,255,0.55);margin-top:4px">💳 כל משפחה: ₪${perFamily.toLocaleString()} (חלוקה שווה בין ${eligibleCount} משפחות)</div>`:''}
         ${contribHtml}
       </div>
-      <div style="padding:10px 12px">
+      <div style="padding:10px 12px" onclick="event.stopPropagation()">
         ${!g.closed?`<button class="edit-only" onclick="openGoalDepositSheet(${g.id})" style="width:100%;padding:11px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer;margin-bottom:8px">↓ הפקדה</button>`:''}
         <div class="card-actions edit-only" style="margin:0">
           <button class="action-btn" onclick="toggleGoalClosed(${g.id})">${g.closed?'↩️ פתח מחדש':'✓ סגור קופה'}</button>
@@ -4485,6 +4485,56 @@ function renderGoalFunds(){
       </div>
     </div>`;
   }).join('');
+}
+
+// Quick "who paid" checklist for a goal fund — clicking a family toggles
+// their contribution between 0 and their equal share (perFamily), instead
+// of typing an amount every time. The manual "↓ הפקדה" sheet still exists
+// for custom/partial amounts; this is the fast path for the common case.
+let _goalPayGoalId=null;
+function openGoalPayModal(goalId){
+  _goalPayGoalId=goalId;
+  renderGoalPayModal();
+  document.getElementById('goalPayModal').style.display='flex';
+}
+function closeGoalPayModal(){
+  document.getElementById('goalPayModal').style.display='none';
+  _goalPayGoalId=null;
+}
+function renderGoalPayModal(){
+  const g=goalFunds.find(x=>x.id===_goalPayGoalId);if(!g)return;
+  const titleEl=document.getElementById('goalPayTitle');
+  if(titleEl)titleEl.textContent='🎯 מי שילם? — '+g.name;
+  const eligible=families.filter(f=>!(g.hiddenFrom||[]).includes(f.id));
+  const perFamily=g.target>0&&eligible.length?Math.ceil(g.target/eligible.length):0;
+  const noteEl=document.getElementById('goalPayNote');
+  if(noteEl)noteEl.textContent=perFamily>0?'חלוקה שווה: ₪'+perFamily.toLocaleString()+' למשפחה':'לא הוגדר סכום מטרה לקופה הזו — אין לפי מה לחשב חלק שווה';
+  document.getElementById('goalPayList').innerHTML=eligible.map(f=>{
+    const paid=perFamily>0&&(g.contributions[f.id]||0)>=perFamily;
+    return`<div class="edit-only" onclick="toggleGoalPaid(${f.id})" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r2);border:1.5px solid ${paid?'var(--green-mid)':'var(--border)'};margin-bottom:6px;cursor:pointer;box-sizing:border-box;background:${paid?'var(--green-bg)':'transparent'}">
+      <span style="font-size:18px;flex-shrink:0">${paid?'✅':'⬜'}</span>
+      ${famAva(f, 32, 'flex-shrink:0')}
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(f.name.replace('משפחת','').trim())}</div></div>
+      <div style="font-size:13px;font-weight:700;color:${paid?'var(--green-mid)':'var(--text2)'}">₪${perFamily.toLocaleString()}</div>
+    </div>
+    <div class="view-only" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r2);border:1.5px solid ${paid?'var(--green-mid)':'var(--border)'};margin-bottom:6px;box-sizing:border-box;background:${paid?'var(--green-bg)':'transparent'}">
+      <span style="font-size:18px;flex-shrink:0">${paid?'✅':'⬜'}</span>
+      ${famAva(f, 32, 'flex-shrink:0')}
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">${esc(f.name.replace('משפחת','').trim())}</div></div>
+      <div style="font-size:13px;font-weight:700;color:${paid?'var(--green-mid)':'var(--text2)'}">₪${perFamily.toLocaleString()}</div>
+    </div>`;
+  }).join('');
+}
+function toggleGoalPaid(famId){
+  if(!editMode)return;
+  const g=goalFunds.find(x=>x.id===_goalPayGoalId);if(!g)return;
+  const eligible=families.filter(f=>!(g.hiddenFrom||[]).includes(f.id));
+  const perFamily=g.target>0&&eligible.length?Math.ceil(g.target/eligible.length):0;
+  if(perFamily<=0)return;
+  const paid=(g.contributions[famId]||0)>=perFamily;
+  g.contributions[famId]=paid?0:perFamily;
+  save();render();
+  renderGoalPayModal();
 }
 
 let _depositFamId=null;
