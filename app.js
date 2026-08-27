@@ -1788,11 +1788,7 @@ function goToEvent(evId){
   },50);
 }
 function goToGoalFund(goalId){
-  openFundDetail();
-  setTimeout(()=>{
-    const el=document.getElementById('gfund-'+goalId);
-    if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
-  },100);
+  openGoalPayModal(goalId);
 }
 function stepChild(id,delta){
   const inp=document.getElementById(id);
@@ -4507,6 +4503,14 @@ function renderGoalPayModal(){
   if(titleEl)titleEl.textContent='🎯 מי שילם? — '+g.name;
   const eligible=families.filter(f=>!(g.hiddenFrom||[]).includes(f.id));
   const perFamily=g.target>0&&eligible.length?Math.ceil(g.target/eligible.length):0;
+  const total=goalTotal(g);
+  const progEl=document.getElementById('goalPayProgress');
+  if(progEl){
+    const pct=g.target>0?Math.min(100,Math.round(total/g.target*100)):0;
+    progEl.innerHTML=`<div style="font-size:11px;color:var(--text2);margin-bottom:3px">נאסף עד כה</div>
+      <div style="font-size:24px;font-weight:800;color:var(--text);letter-spacing:-0.5px">₪${total.toLocaleString()}${g.target>0?` <span style="font-size:13px;font-weight:600;color:var(--text2)">מתוך ₪${g.target.toLocaleString()}</span>`:''}</div>
+      ${g.target>0?`<div class="pbar" style="margin:8px 0 2px"><div class="pfill ${pct>=100?'full':'part'}" style="width:${pct}%"></div></div><div style="font-size:11px;color:var(--text2)">${pct}%</div>`:''}`;
+  }
   const noteEl=document.getElementById('goalPayNote');
   if(noteEl)noteEl.textContent=perFamily>0?'חלוקה שווה: ₪'+perFamily.toLocaleString()+' למשפחה':'לא הוגדר סכום מטרה לקופה הזו — אין לפי מה לחשב חלק שווה';
   document.getElementById('goalPayList').innerHTML=eligible.map(f=>{
