@@ -24,13 +24,15 @@ async function sendViaEmailJS(publicKey, serviceId, templateId, toEmail, toName,
   if (!res.ok) throw new Error(`EmailJS ${res.status}: ${await res.text()}`);
 }
 
-function debtEmailContent(famName, debts, totalDebt) {
+function debtEmailContent(famName, debts, totalDebt, creditOffset) {
+  const creditLine = creditOffset > 0.5 ? `\n(קוזזה זכות של ₪${Math.round(creditOffset).toLocaleString()} מאירוע פתוח אחר)` : '';
   const message = `שלום ${famName},\n\nתזכורת שבועית — יש לך חוב פתוח באפליקציה:\n\n` +
     debts.map(d => `${d.name}: ₪${d.owe.toLocaleString()}`).join('\n') +
-    `\n\nסה"כ: ₪${totalDebt.toLocaleString()}`;
+    `\n\nסה"כ: ₪${totalDebt.toLocaleString()}${creditLine}`;
   const rows = debts.map(d =>
     `<tr><td style="padding:6px 10px;border-bottom:1px solid #eee">${_escHtml(d.name)}</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:left;font-weight:700">₪${d.owe.toLocaleString()}</td></tr>`
   ).join('');
+  const creditHtml = creditOffset > 0.5 ? `<div style="margin-top:6px;font-size:12px;color:#666;text-align:center">קוזזה זכות של ₪${Math.round(creditOffset).toLocaleString()} מאירוע פתוח אחר</div>` : '';
   const html = `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="utf-8"></head><body style="margin:0;padding:12px;background:#eef0f8;font-family:-apple-system,Helvetica,Arial,sans-serif;direction:rtl">
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center">
     <table role="presentation" style="width:100%;max-width:480px;background:#fff;border-radius:10px;overflow:hidden" cellspacing="0" cellpadding="0">
@@ -44,6 +46,7 @@ function debtEmailContent(famName, debts, totalDebt) {
       <div style="margin-top:14px;padding:10px 14px;background:#FEF2F2;border-radius:8px;text-align:center">
         <span style="font-weight:700;color:#A32D2D">סה"כ: ₪${totalDebt.toLocaleString()}</span>
       </div>
+      ${creditHtml}
     </td></tr>
     <tr><td style="padding:0 20px 20px;text-align:center">
       <a href="https://steinhart-livid.vercel.app/" style="display:inline-block;background:#1E88D8;color:#fff;text-decoration:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:700">פתח באפליקציה ←</a>
@@ -85,11 +88,17 @@ async function sendWeeklyDebtReminders(db, data) {
     const fam = families.find(f => f.id === fid);
     if (!fam) continue;
     const famName = fam.name.replace('משפחת', '').trim();
-    const totalDebt = debts.reduce((s, d) => s + d.owe, 0);
+    // The displayed total is the actual net amount owed (after any credit in
+    // another open event) — not the raw per-event sum, which would overstate
+    // it whenever a credit was already used to decide whether to send this
+    // reminder at all.
+    const grossDebt = debts.reduce((s, d) => s + d.owe, 0);
+    const totalDebt = Math.round(-(netByFam[fid] || 0));
+    const creditOffset = grossDebt - totalDebt;
 
     const addrs = [fam.email, fam.email2].filter(Boolean);
     if (addrs.length) {
-      const { message, html } = debtEmailContent(famName, debts, totalDebt);
+      const { message, html } = debtEmailContent(famName, debts, totalDebt, creditOffset);
       for (const email of addrs) {
         try {
           await sendViaEmailJS(publicKey, serviceId, templateId, email, famName, '⚠️ תזכורת שבועית: חוב פתוח · Steinhart', message, html);

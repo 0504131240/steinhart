@@ -169,8 +169,12 @@ function evEffectivePotPayments(ev){
 function evAdjBalance(ev){
   const adjBal=evBalance(ev);
   (ev.settled||[]).forEach(s=>{
-    const fromFid=ev.participants.find(fid=>{ const f=getFam(fid); return f&&f.name.replace('משפחת','').trim()===s.from; });
-    const toFid=ev.participants.find(fid=>{ const f=getFam(fid); return f&&f.name.replace('משפחת','').trim()===s.to; });
+    // Prefer the stored fromFid/toFid — matching by name breaks silently if
+    // a family is later renamed (an already-paid debt would look unpaid
+    // again). Only fall back to name matching for old records that predate
+    // those fields.
+    const fromFid=s.fromFid!=null?s.fromFid:ev.participants.find(fid=>{ const f=getFam(fid); return f&&f.name.replace('משפחת','').trim()===s.from; });
+    const toFid=s.toFid!=null?s.toFid:ev.participants.find(fid=>{ const f=getFam(fid); return f&&f.name.replace('משפחת','').trim()===s.to; });
     if(fromFid!=null) adjBal[fromFid]=(adjBal[fromFid]||0)+s.amt;
     if(toFid!=null) adjBal[toFid]=(adjBal[toFid]||0)-s.amt;
   });
@@ -1305,6 +1309,12 @@ function toHebrewYear(hy){
   else{if(t)s+=TENS[t];if(o)s+=ONES[o];}
   return s.length===1?s+'׳':s.slice(0,-1)+'״'+s.slice(-1);
 }
+// Intl shows plain "אדר" in a non-leap Hebrew year but "אדר א׳"/"אדר ב׳" in a
+// leap year, so a date saved in one year type would never string-match
+// against the other type's month name — treat any "אדר..." as equal.
+function _hebMonthEq(a,b){
+  return a===b||(!!a&&!!b&&a.startsWith('אדר')&&b.startsWith('אדר'));
+}
 function hebrewToGregorian(hebYear,hebMonthName,hebDay){
   if(!hebYear||!hebMonthName||!hebDay)return null;
   const dayFmt=new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{day:'numeric'});
@@ -1314,7 +1324,7 @@ function hebrewToGregorian(hebYear,hebMonthName,hebDay){
   const cur=new Date(gregYearGuess,0,1);
   cur.setDate(cur.getDate()-150);
   for(let i=0;i<400;i++){
-    if(parseInt(yearFmt.format(cur))===hebYear&&monthFmt.format(cur)===hebMonthName&&parseInt(dayFmt.format(cur))===hebDay)return new Date(cur);
+    if(parseInt(yearFmt.format(cur))===hebYear&&_hebMonthEq(monthFmt.format(cur),hebMonthName)&&parseInt(dayFmt.format(cur))===hebDay)return new Date(cur);
     cur.setDate(cur.getDate()+1);
   }
   return null;
@@ -1369,7 +1379,7 @@ function renderCalendar(){
       const isToday=ds===todayStr;
       const isSel=calSelDay===ds&&!isToday;
       const evOnDay=calItems.filter(c=>c.date===ds);
-      const bdayOnDay=_allBdays.filter(b=>b.hebDay===hebDayNumInt&&b.hebMonth===hebMonthName);
+      const bdayOnDay=_allBdays.filter(b=>b.hebDay===hebDayNumInt&&_hebMonthEq(b.hebMonth,hebMonthName));
       if(bdayOnDay.length)bdayByDate[ds]=bdayOnDay;
       const hasEv=evOnDay.length>0;const hasBday=bdayOnDay.length>0;
       const cls=['fh-cal-day',isToday?'today':'',isSel?'sel':'',hasEv?'has-ev':(hasBday?'has-bday':'')].filter(Boolean).join(' ');
@@ -1394,7 +1404,7 @@ function renderCalendar(){
       const isToday=ds===todayStr;
       const isSel=calSelDay===ds&&!isToday;
       const evOnDay=calItems.filter(c=>c.date===ds);
-      const bdayOnDay=_allBdays.filter(b=>b.hebDay===hebDayNumInt&&b.hebMonth===hebMonthName);
+      const bdayOnDay=_allBdays.filter(b=>b.hebDay===hebDayNumInt&&_hebMonthEq(b.hebMonth,hebMonthName));
       if(bdayOnDay.length)bdayByDate[ds]=bdayOnDay;
       const hasEv=evOnDay.length>0;const hasBday=bdayOnDay.length>0;
       const cls=['fh-cal-day',isToday?'today':'',isSel?'sel':'',hasEv?'has-ev':(hasBday?'has-bday':'')].filter(Boolean).join(' ');
@@ -2914,7 +2924,7 @@ function renderKidDatePicker(){
     const hebDayNumInt=parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{day:'numeric'}).format(dayDate));
     const label=HEB_DAY_NUM[hebDayNumInt]||String(hebDayNumInt);
     const isToday=ds===todayStr;
-    const isSel=_kidPickedDate&&_kidPickedDate.hebYear===hebYearNum&&_kidPickedDate.hebMonth===hebMonth&&_kidPickedDate.hebDay===hebDayNumInt;
+    const isSel=_kidPickedDate&&_kidPickedDate.hebYear===hebYearNum&&_hebMonthEq(_kidPickedDate.hebMonth,hebMonth)&&_kidPickedDate.hebDay===hebDayNumInt;
     const cls=['fh-cal-day',isToday?'today':'',isSel?'sel':''].filter(Boolean).join(' ');
     html+=`<div class="${cls}" onclick="selectKidPickerDay(${hebYearNum},'${hebMonth}',${hebDayNumInt})"><span style="font-size:10px;line-height:1">${label}</span></div>`;
   });
@@ -3405,7 +3415,7 @@ async function doCreate(){
       if(!ev.cumulative){
         ev.totalCost=totalCost;
         if(expMode==='custom'){
-          const preserved=(ev.expenseItems||[]).filter(it=>it.customSplit||(it.sharedWith&&it.sharedWith.length<participants.length));
+          const preserved=(ev.expenseItems||[]).filter(it=>it.customSplit||(it.sharedWith&&it.sharedWith.length<participants.length&&it.sharedWith.some(fid=>participants.includes(fid))));
           const finalExpenses={...expenses};
           preserved.forEach(it=>{ finalExpenses[it.famId]=(finalExpenses[it.famId]||0)+it.amt; });
           let seq=Math.max(0,...preserved.map(it=>it.id||0))+1;
@@ -5565,7 +5575,18 @@ function deletePotDeposit(evId,famId,localIdx){
     return false;
   });
   if(gi<0)return;
+  const removed=ev.potPayments[gi];
   ev.potPayments.splice(gi,1);
+  // This deposit was funded from the family's wallet, not paid directly —
+  // reverse that deduction too, or the money just vanishes.
+  if(removed.fromFund){
+    const key=String(famId);
+    fund.famBalances[key]=(fund.famBalances[key]||0)+removed.amt;
+    const famName=(getFam(famId)||{}).name?.replace('משפחת','').trim()||'';
+    fund.transactions.push({id:nxtTx++,type:'deposit',famId,amount:removed.amt,evId:ev.id,
+      desc:'ביטול הפקדה לקופת האירוע · '+ev.name+(famName?' → '+famName:''),
+      date:new Date().toLocaleDateString('he-IL')});
+  }
   save();render();
   // refresh pot modal if open
   const modal=document.getElementById('potModal');
@@ -5661,7 +5682,7 @@ function doDepositToCumPot(){
       desc:'העברה לקופת האירוע · '+ev.name+' → '+_cumPotFamName,
       date:new Date().toLocaleDateString('he-IL')});
   }
-  ev.potPayments.push({famId:savedFamId,amt:roundAmt});
+  ev.potPayments.push({famId:savedFamId,amt:roundAmt,fromFund});
   closeCumPot();
   save();render();
   const _potF=getFam(savedFamId);

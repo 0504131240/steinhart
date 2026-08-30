@@ -21,6 +21,13 @@ const { sendWeeklyDebtReminders } = require('./weekly-debt-reminder');
 
 const BACKUP_RETENTION_DAYS = 30;
 
+// Intl shows plain "אדר" in a non-leap Hebrew year but "אדר א׳"/"אדר ב׳" in a
+// leap year, so a date saved in one year type would never string-match
+// against the other type's month name — treat any "אדר..." as equal.
+function _hebMonthEq(a, b) {
+  return a === b || (!!a && !!b && a.startsWith('אדר') && b.startsWith('אדר'));
+}
+
 async function sendBirthdayReminders(db, data) {
   const all = allBirthdays(data.families || [], data.yahrzeits || []);
   if (!all.length) return { occasions: 0, sent: 0 };
@@ -48,7 +55,7 @@ async function sendBirthdayReminders(db, data) {
     const d = new Date(today); d.setDate(d.getDate() + i);
     const hd = parseInt(dayFmt.format(d)), hm = monthFmt.format(d);
     const occHebYear = parseInt(yearFmt.format(d));
-    for (const b of all.filter(x => x.hebDay === hd && x.hebMonth === hm)) {
+    for (const b of all.filter(x => x.hebDay === hd && _hebMonthEq(x.hebMonth, hm))) {
       occasions++;
       const isAnniv = b.kind === 'anniversary';
       const isYahrzeit = b.kind === 'yahrzeit';
@@ -91,7 +98,7 @@ async function sendBirthdayReminders(db, data) {
 
 module.exports = async (req, res) => {
   const auth = req.headers['authorization'];
-  if (process.env.CRON_SECRET && auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
     res.status(401).json({ error: 'unauthorized' });
     return;
   }
