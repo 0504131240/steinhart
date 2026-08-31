@@ -211,6 +211,21 @@ async function fbInit(){
 
 let _saving=false;
 
+function openEjsSettingsModal(){
+  loadEjsSettings();
+  document.getElementById('ejsSettingsModal').style.display='flex';
+}
+function closeEjsSettingsModal(){
+  document.getElementById('ejsSettingsModal').style.display='none';
+}
+function openPaymentSettingsModal(){
+  loadPaymentSettings();
+  document.getElementById('paymentSettingsModal').style.display='flex';
+}
+function closePaymentSettingsModal(){
+  document.getElementById('paymentSettingsModal').style.display='none';
+}
+
 // EmailJS settings
 async function loadEjsSettings(){
   try{
