@@ -2776,6 +2776,11 @@ function _treeLayout(people){
   const maxLevel=people.length?Math.max(...people.map(p=>level[p.id])):0;
   const pos={};
   const usedInUnit=new Set();
+  // Which parent-unit (by its own combined-ids key) actually positioned a
+  // given kid — used by renderFamilyTree to tell a normal shared-bus child
+  // apart from one whose spouse's own parent unit lost the race to claim
+  // them (see the "married in from elsewhere" handling there).
+  const claimedBy={};
   function makeUnit(p){
     if(usedInUnit.has(p.id))return null;
     const spouseId=(p.spouseIds||[]).find(sid=>byId.has(sid)&&level[sid]===level[p.id]&&!usedInUnit.has(sid));
@@ -2813,6 +2818,7 @@ function _treeLayout(people){
         if(!ku)return;
         ku.ids.forEach(id=>seen.add(id));
         kidUnits.push(ku);
+        claimedBy[k.id]=key;
       });
       const kidsSet=new Set(kids.map(k=>k.id));
       const spans=kidUnits.map(ku=>{
@@ -2863,7 +2869,7 @@ function _treeLayout(people){
     const u=makeUnit(p);
     if(u)layoutUnit(u);
   });
-  return {pos,maxLevel};
+  return {pos,maxLevel,claimedBy};
 }
 function renderFamilyTree(){
   const canvas=document.getElementById('treeCanvas');if(!canvas)return;
@@ -2873,7 +2879,7 @@ function renderFamilyTree(){
     canvas.innerHTML='<div class="empty" style="padding:40px 0"><span class="empty-ico">🌳</span>אין עדיין אנשים בעץ. לחצו על "+ הוסף אדם" כדי להתחיל.</div>';
     return;
   }
-  const {pos,maxLevel}=_treeLayout(people);
+  const {pos,maxLevel,claimedBy}=_treeLayout(people);
   const maxX=Math.max(...Object.values(pos).map(p=>p.x+TREE_NODE_W))+20;
   const totalH=(maxLevel+1)*TREE_LEVEL_H+20;
   let svgLines='';
@@ -2889,7 +2895,6 @@ function renderFamilyTree(){
   });
   // Group children sharing the exact same parent set so siblings share one
   // drop line + bus instead of a tangle of separate lines.
-  const byId=new Map(people.map(p=>[p.id,p]));
   const groups=new Map();
   people.forEach(p=>{
     if(!p.parentIds||!p.parentIds.length)return;
@@ -2897,21 +2902,6 @@ function renderFamilyTree(){
     if(!groups.has(key))groups.set(key,{parentIds:p.parentIds,kids:[]});
     groups.get(key).kids.push(p.id);
   });
-  // A kid whose spouse ALSO has their own separately-recorded parents (both
-  // sides of a couple with known, different lineages) gets pulled into that
-  // spouse's own parent branch for positioning (see _treeLayout) — so this
-  // group's own line down to them can end up far away, overlapping other
-  // lines and reading as one shared parent group. Mark those as dashed so
-  // it's visually clear this is "married in from a separately-tracked
-  // family" rather than a normal shared child.
-  function _isMarriedElsewhere(kidId,groupKey){
-    const kid=byId.get(kidId);if(!kid)return false;
-    return(kid.spouseIds||[]).some(sid=>{
-      const sp=byId.get(sid);
-      if(!sp||!sp.parentIds||!sp.parentIds.length)return false;
-      return[...sp.parentIds].sort((a,b)=>a-b).join(',')!==groupKey;
-    });
-  }
   const farConnections=[]; // collected first so overlapping ones can be staggered below
   groups.forEach((g,key)=>{
     const parentPoints=g.parentIds.map(pid=>pos[pid]).filter(Boolean);
@@ -2919,8 +2909,13 @@ function renderFamilyTree(){
     const dropX=parentPoints.reduce((s,pp)=>s+pp.cx,0)/parentPoints.length;
     const dropY=Math.max(...parentPoints.map(pp=>pp.bottom));
     const busY=dropY+TREE_LEVEL_H/2;
-    const localKids=g.kids.filter(kid=>pos[kid]&&!_isMarriedElsewhere(kid,key));
-    const farKids=g.kids.filter(kid=>pos[kid]&&_isMarriedElsewhere(kid,key));
+    // _treeLayout only credits a kid to the parent-unit that actually won
+    // the race to position them (claimedBy) — a kid whose spouse also has
+    // their own recorded parents can get positioned under THAT branch
+    // instead (see _treeLayout's makeUnit/claimedBy), so this group's own
+    // line to them has to reach across rather than join the normal bus.
+    const localKids=g.kids.filter(kid=>pos[kid]&&claimedBy[kid]===key);
+    const farKids=g.kids.filter(kid=>pos[kid]&&claimedBy[kid]!==key);
     if(localKids.length){
       const kidXs=localKids.map(kid=>pos[kid].cx);
       svgLines+=`<line x1="${dropX}" y1="${dropY}" x2="${dropX}" y2="${busY}" stroke="var(--border)" stroke-width="2"/>`;
