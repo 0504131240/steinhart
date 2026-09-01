@@ -2758,13 +2758,20 @@ function _treeLayout(people){
         u.ids.forEach(id=>{ (byId.get(id).parentIds||[]).forEach(pid=>{ if(pos[pid])parentXs.push(pos[pid].cx); }); });
         u._key=parentXs.length?parentXs.reduce((a,b)=>a+b,0)/parentXs.length:Infinity;
         // Siblings share the same parents, hence the same _key above — this
-        // second key breaks that tie by birth year (oldest first/leftmost),
-        // so siblings line up in age order instead of arbitrary insertion
-        // order. Anyone without a known birth year sorts to the end.
+        // second key breaks that tie by birth year (oldest last/rightmost,
+        // youngest first/leftmost), so siblings line up in age order
+        // instead of arbitrary insertion order. Anyone without a known
+        // birth year sorts to the very end (past even the oldest sibling).
         const byrs=u.ids.map(id=>byId.get(id).birthYear).filter(y=>y!=null);
-        u._ageKey=byrs.length?byrs.reduce((a,b)=>a+b,0)/byrs.length:Infinity;
+        u._ageKey=byrs.length?byrs.reduce((a,b)=>a+b,0)/byrs.length:null;
       });
-      autoUnits.sort((a,b)=>a._key-b._key||a._ageKey-b._ageKey);
+      autoUnits.sort((a,b)=>{
+        if(a._key!==b._key)return a._key-b._key;
+        const aKnown=a._ageKey!=null,bKnown=b._ageKey!=null;
+        if(aKnown&&bKnown)return b._ageKey-a._ageKey;
+        if(aKnown!==bKnown)return aKnown?-1:1;
+        return 0;
+      });
     }
     let x=0;
     autoUnits.forEach(u=>{
