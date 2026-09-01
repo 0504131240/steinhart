@@ -23,7 +23,13 @@ let notifications=[];
 let polls=[];
 let countdowns=[];
 let yahrzeits=[];
-let nxtMsg=1,nxtCal=1,nxtBday=1,nxtClaim=1,nxtNotif=1,nxtPoll=1,nxtCountdown=1,nxtYahrzeit=1;
+// Family tree: {id,name,gender:'boy'|'girl'|'', parentIds:[id,id?], spouseIds:[id,...]}[].
+// A separate graph from `families` (nuclear-family units for money-splitting) —
+// seeded once from it (seedFamilyTreeIfEmpty) but edited independently from
+// then on, since a genealogical tree needs relations families/kids don't
+// model (grandparents, siblings-in-law, multiple generations...).
+let familyTree=[];
+let nxtMsg=1,nxtCal=1,nxtBday=1,nxtClaim=1,nxtNotif=1,nxtPoll=1,nxtCountdown=1,nxtYahrzeit=1,nxtTreePerson=1;
 let currentShell='home';
 let calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calSelDay=null,calHebrew=true;
 let calHebRefDate=new Date();
@@ -556,6 +562,7 @@ function saveLocal(){
     localStorage.setItem('polls',JSON.stringify(polls));
     localStorage.setItem('countdowns',JSON.stringify(countdowns));
     localStorage.setItem('yahrzeits',JSON.stringify(yahrzeits));
+    localStorage.setItem('familyTree',JSON.stringify(familyTree));
   }catch(e){}
 }
 
@@ -570,7 +577,7 @@ async function save(){
   showSyncStatus('שומר...');
   try{
     const {db,doc,setDoc}=await fbInit();
-    await setDoc(doc(db,'appData','familyPayments'),{families,events,fund,goalFunds,adminPass,messages,calItems,birthdays,paymentClaims,visits,notifications,polls,countdowns,yahrzeits});
+    await setDoc(doc(db,'appData','familyPayments'),{families,events,fund,goalFunds,adminPass,messages,calItems,birthdays,paymentClaims,visits,notifications,polls,countdowns,yahrzeits,familyTree});
     localStorage.removeItem('pendingSave');
     localStorage.removeItem('pendingSaveAt');
     showSyncStatus('✓ נשמר',2000);
@@ -606,6 +613,7 @@ async function load(){
     polls=d.polls||[];
     countdowns=d.countdowns||[];
     yahrzeits=d.yahrzeits||[];
+    familyTree=d.familyTree||[];
     nxtMsg=messages.length?Math.max(...messages.map(m=>m.id))+1:1;
     nxtCal=calItems.length?Math.max(...calItems.map(c=>c.id))+1:1;
     nxtBday=birthdays.length?Math.max(...birthdays.map(b=>b.id))+1:1;
@@ -614,6 +622,7 @@ async function load(){
     nxtPoll=polls.length?Math.max(...polls.map(p=>p.id))+1:1;
     nxtCountdown=countdowns.length?Math.max(...countdowns.map(c=>c.id))+1:1;
     nxtYahrzeit=yahrzeits.length?Math.max(...yahrzeits.map(y=>y.id))+1:1;
+    nxtTreePerson=familyTree.length?Math.max(...familyTree.map(p=>p.id))+1:1;
     nxtId=events.length?Math.max(...events.map(e=>e.id))+1:1;
     nxtFam=families.length?Math.max(...families.map(f=>f.id))+1:1;
     nxtTx=(fund.transactions||[]).length?Math.max(...fund.transactions.map(t=>t.id))+1:1;
@@ -660,6 +669,7 @@ async function load(){
       const pls=localStorage.getItem('polls');if(pls)polls=JSON.parse(pls);
       const cds=localStorage.getItem('countdowns');if(cds)countdowns=JSON.parse(cds);
       const yhz=localStorage.getItem('yahrzeits');if(yhz)yahrzeits=JSON.parse(yhz);
+      const ftr=localStorage.getItem('familyTree');if(ftr)familyTree=JSON.parse(ftr);
       nxtMsg=messages.length?Math.max(...messages.map(m=>m.id))+1:1;
       nxtCal=calItems.length?Math.max(...calItems.map(c=>c.id))+1:1;
       nxtBday=birthdays.length?Math.max(...birthdays.map(b=>b.id))+1:1;
@@ -668,6 +678,7 @@ async function load(){
       nxtPoll=polls.length?Math.max(...polls.map(p=>p.id))+1:1;
       nxtCountdown=countdowns.length?Math.max(...countdowns.map(c=>c.id))+1:1;
       nxtYahrzeit=yahrzeits.length?Math.max(...yahrzeits.map(y=>y.id))+1:1;
+      nxtTreePerson=familyTree.length?Math.max(...familyTree.map(p=>p.id))+1:1;
       nxtId=events.reduce((a,e)=>Math.max(a,e.id),0)+1;
       nxtFam=families.reduce((a,f)=>Math.max(a,f.id),0)+1;
       nxtGoal=goalFunds.length?Math.max(...goalFunds.map(g=>g.id))+1:1;
@@ -731,7 +742,7 @@ function showSyncStatus(msg,hideAfter){
 
 function render(){
   applyEditMode();
-  const fns=[renderHome,renderMetrics,renderOpenList,renderArchive,renderFamilies,renderFund,renderGoalFunds,renderFamilyHome,renderClaimsBanner,renderVisitLog,renderNotifCenterBadge,renderPollBanner];
+  const fns=[renderHome,renderMetrics,renderOpenList,renderArchive,renderFamilies,renderFund,renderGoalFunds,renderFamilyHome,renderClaimsBanner,renderVisitLog,renderNotifCenterBadge,renderPollBanner,renderFamilyTreeIfOpen];
   fns.forEach(fn=>{try{fn();}catch(e){console.error(fn.name,e);}});
   const debt=calcDebt();
   const open=events.filter(e=>e.open).length;
@@ -1321,6 +1332,8 @@ async function startRealtimeSync(){
           ()=>{nxtCountdown=countdowns.length?Math.max(...countdowns.map(c=>c.id))+1:1;})||changed;
         changed=_adoptIfChanged(d.yahrzeits||[],()=>yahrzeits,v=>yahrzeits=v,
           ()=>{nxtYahrzeit=yahrzeits.length?Math.max(...yahrzeits.map(y=>y.id))+1:1;})||changed;
+        changed=_adoptIfChanged(d.familyTree||[],()=>familyTree,v=>familyTree=v,
+          ()=>{nxtTreePerson=familyTree.length?Math.max(...familyTree.map(p=>p.id))+1:1;})||changed;
         if((d.adminPass||'')!==adminPass){adminPass=d.adminPass||'';}
         if(changed)render();
       }
@@ -2612,6 +2625,271 @@ function openFamiliesFromHome(){
 function closeFamiliesHomeOverlay(){
   document.getElementById('familiesHomeOverlay').style.display='none';
 }
+
+// ── Family tree ("אילן יוחסין") ─────────────────────────────────────────────
+// A separate person graph from `families` (see the familyTree declaration
+// above) — seeded once from the current families/kids, then edited freely by
+// anyone (add parents/siblings/spouses/children, rename, delete) since a
+// genealogical tree outgrows what the payments app's family units model.
+const TREE_NODE_W=112,TREE_NODE_H=64,TREE_H_GAP=22,TREE_COUPLE_GAP=14,TREE_LEVEL_H=150;
+let _treeActivePersonId=null,_treeAddRelation=null;
+
+function seedFamilyTreeIfEmpty(){
+  if(familyTree.length||!families.length)return;
+  const people=[];
+  families.forEach(f=>{
+    const surname=f.name.replace('משפחת','').trim();
+    const p1={id:nxtTreePerson++,name:(f.emailName||'הורה 1')+' '+surname,gender:'',parentIds:[],spouseIds:[]};
+    people.push(p1);
+    let parentIds=[p1.id];
+    if(!f.parent2Removed){
+      const p2={id:nxtTreePerson++,name:(f.emailName2||'הורה 2')+' '+surname,gender:'',parentIds:[],spouseIds:[p1.id]};
+      p1.spouseIds.push(p2.id);
+      people.push(p2);
+      parentIds=[p1.id,p2.id];
+    }
+    (f.kids||[]).forEach(k=>{
+      if(!k.name)return;
+      people.push({id:nxtTreePerson++,name:k.name,gender:k.gender==='boy'||k.gender==='girl'?k.gender:'',parentIds:[...parentIds],spouseIds:[]});
+    });
+  });
+  familyTree=people;
+  save();
+}
+function openFamilyTreeOverlay(){
+  seedFamilyTreeIfEmpty();
+  document.getElementById('familyTreeOverlay').style.display='flex';
+  renderFamilyTree();
+}
+function closeFamilyTreeOverlay(){
+  document.getElementById('familyTreeOverlay').style.display='none';
+}
+function renderFamilyTreeIfOpen(){
+  const overlay=document.getElementById('familyTreeOverlay');
+  if(overlay&&overlay.style.display==='flex')renderFamilyTree();
+}
+// Assigns each person a generation level via BFS from roots (no parents),
+// then aligns spouses to the same (max) level so a married-in partner sits
+// beside their spouse's generation rather than off on their own.
+function _treeComputeLevels(people){
+  const byId=new Map(people.map(p=>[p.id,p]));
+  const level={};
+  people.forEach(p=>{ if(!(p.parentIds&&p.parentIds.length))level[p.id]=0; });
+  let changed=true,guard=0;
+  while(changed&&guard<200){
+    changed=false;guard++;
+    people.forEach(p=>{
+      if(level[p.id]!=null)return;
+      const pls=(p.parentIds||[]).filter(pid=>byId.has(pid)).map(pid=>level[pid]).filter(l=>l!=null);
+      const validParents=(p.parentIds||[]).filter(pid=>byId.has(pid));
+      if(validParents.length&&pls.length===validParents.length){level[p.id]=Math.max(...pls)+1;changed=true;}
+    });
+  }
+  people.forEach(p=>{ if(level[p.id]==null)level[p.id]=0; }); // orphaned/cyclic refs fallback
+  let al=true,g2=0;
+  while(al&&g2<100){
+    al=false;g2++;
+    people.forEach(p=>{
+      (p.spouseIds||[]).forEach(sid=>{
+        if(!byId.has(sid))return;
+        const m=Math.max(level[p.id],level[sid]);
+        if(level[p.id]!==m){level[p.id]=m;al=true;}
+        if(level[sid]!==m){level[sid]=m;al=true;}
+      });
+    });
+  }
+  return level;
+}
+// Top-down layout: level 0 keeps insertion order, every level below is
+// ordered by the average x of each unit's parents (a couple counts as one
+// unit so spouses stay adjacent) — a simple one-pass barycenter pass that
+// keeps most families visually under their parents without needing a full
+// graph-layout library.
+function _treeLayout(people){
+  const byId=new Map(people.map(p=>[p.id,p]));
+  const level=_treeComputeLevels(people);
+  const maxLevel=people.length?Math.max(...people.map(p=>level[p.id])):0;
+  const pos={};
+  for(let li=0;li<=maxLevel;li++){
+    const levelPeople=people.filter(p=>level[p.id]===li);
+    const used=new Set(),units=[];
+    levelPeople.forEach(p=>{
+      if(used.has(p.id))return;
+      const spouseId=(p.spouseIds||[]).find(sid=>byId.has(sid)&&level[sid]===li&&!used.has(sid));
+      if(spouseId!=null){units.push({ids:[p.id,spouseId]});used.add(p.id);used.add(spouseId);}
+      else{units.push({ids:[p.id]});used.add(p.id);}
+    });
+    if(li>0){
+      units.forEach(u=>{
+        const parentXs=[];
+        u.ids.forEach(id=>{ (byId.get(id).parentIds||[]).forEach(pid=>{ if(pos[pid])parentXs.push(pos[pid].cx); }); });
+        u._key=parentXs.length?parentXs.reduce((a,b)=>a+b,0)/parentXs.length:Infinity;
+      });
+      units.sort((a,b)=>a._key-b._key);
+    }
+    let x=0;
+    units.forEach(u=>{
+      u.ids.forEach((id,i)=>{
+        const ix=x+i*(TREE_NODE_W+TREE_COUPLE_GAP);
+        pos[id]={x:ix,y:li*TREE_LEVEL_H,cx:ix+TREE_NODE_W/2,cy:li*TREE_LEVEL_H+TREE_NODE_H/2,bottom:li*TREE_LEVEL_H+TREE_NODE_H};
+      });
+      x+=(u.ids.length===2?TREE_NODE_W*2+TREE_COUPLE_GAP:TREE_NODE_W)+TREE_H_GAP;
+    });
+  }
+  return {pos,maxLevel};
+}
+function renderFamilyTree(){
+  const canvas=document.getElementById('treeCanvas');if(!canvas)return;
+  const people=familyTree;
+  if(!people.length){
+    canvas.style.width='';canvas.style.height='';
+    canvas.innerHTML='<div class="empty" style="padding:40px 0"><span class="empty-ico">🌳</span>אין עדיין אנשים בעץ. לחצו על "+ הוסף אדם" כדי להתחיל.</div>';
+    return;
+  }
+  const {pos,maxLevel}=_treeLayout(people);
+  const maxX=Math.max(...Object.values(pos).map(p=>p.x+TREE_NODE_W))+20;
+  const totalH=(maxLevel+1)*TREE_LEVEL_H+20;
+  let svgLines='';
+  const drawnPairs=new Set();
+  people.forEach(p=>{
+    (p.spouseIds||[]).forEach(sid=>{
+      const key=[p.id,sid].sort((a,b)=>a-b).join('-');
+      if(drawnPairs.has(key)||!pos[sid])return;
+      drawnPairs.add(key);
+      const a=pos[p.id],b=pos[sid];
+      svgLines+=`<line x1="${a.cx}" y1="${a.cy}" x2="${b.cx}" y2="${b.cy}" stroke="var(--border)" stroke-width="2"/>`;
+    });
+  });
+  // Group children sharing the exact same parent set so siblings share one
+  // drop line + bus instead of a tangle of separate lines.
+  const groups=new Map();
+  people.forEach(p=>{
+    if(!p.parentIds||!p.parentIds.length)return;
+    const key=[...p.parentIds].sort((a,b)=>a-b).join(',');
+    if(!groups.has(key))groups.set(key,{parentIds:p.parentIds,kids:[]});
+    groups.get(key).kids.push(p.id);
+  });
+  groups.forEach(g=>{
+    const parentPoints=g.parentIds.map(pid=>pos[pid]).filter(Boolean);
+    const kidXs=g.kids.map(kid=>pos[kid]?pos[kid].cx:null).filter(x=>x!=null);
+    if(!parentPoints.length||!kidXs.length)return;
+    const dropX=parentPoints.reduce((s,pp)=>s+pp.cx,0)/parentPoints.length;
+    const dropY=Math.max(...parentPoints.map(pp=>pp.bottom));
+    const busY=dropY+TREE_LEVEL_H/2;
+    svgLines+=`<line x1="${dropX}" y1="${dropY}" x2="${dropX}" y2="${busY}" stroke="var(--border)" stroke-width="2"/>`;
+    const minX=Math.min(dropX,...kidXs),maxXk=Math.max(dropX,...kidXs);
+    svgLines+=`<line x1="${minX}" y1="${busY}" x2="${maxXk}" y2="${busY}" stroke="var(--border)" stroke-width="2"/>`;
+    g.kids.forEach(kid=>{
+      const kp=pos[kid];if(!kp)return;
+      svgLines+=`<line x1="${kp.cx}" y1="${busY}" x2="${kp.cx}" y2="${kp.y}" stroke="var(--border)" stroke-width="2"/>`;
+    });
+  });
+  const cards=people.map(p=>{
+    const pp=pos[p.id];if(!pp)return'';
+    const ico=p.gender==='boy'?'👦':p.gender==='girl'?'👧':'👤';
+    return`<div onclick="openTreePersonModal(${p.id})" style="position:absolute;left:${pp.x}px;top:${pp.y}px;width:${TREE_NODE_W}px;height:${TREE_NODE_H}px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.08);padding:4px;box-sizing:border-box;text-align:center;gap:2px">
+      <span style="font-size:18px;line-height:1">${ico}</span>
+      <span style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(p.name||'ללא שם')}</span>
+    </div>`;
+  }).join('');
+  canvas.style.width=maxX+'px';
+  canvas.style.height=totalH+'px';
+  canvas.innerHTML=`<svg width="${maxX}" height="${totalH}" style="position:absolute;top:0;left:0;pointer-events:none">${svgLines}</svg>${cards}`;
+}
+function _treeGenderBtnMap(){return{'':'treeGenderNone',boy:'treeGenderBoy',girl:'treeGenderGirl'};}
+function _renderTreeGenderButtons(g){
+  const map=_treeGenderBtnMap();
+  Object.keys(map).forEach(k=>{
+    const el=document.getElementById(map[k]);if(!el)return;
+    el.style.background=g===k?'var(--blue-mid)':'transparent';
+    el.style.color=g===k?'#fff':'var(--text2)';
+    el.style.borderColor=g===k?'var(--blue-mid)':'var(--border)';
+  });
+}
+function openTreePersonModal(id){
+  _treeActivePersonId=id;
+  const p=familyTree.find(x=>x.id===id);if(!p)return;
+  document.getElementById('treePersonNameInp').value=p.name||'';
+  _renderTreeGenderButtons(p.gender||'');
+  const addParentBtn=document.getElementById('treeAddParentBtn');
+  if(addParentBtn)addParentBtn.style.display=(p.parentIds&&p.parentIds.length>=2)?'none':'block';
+  document.getElementById('treePersonModal').style.display='flex';
+}
+function closeTreePersonModal(){
+  document.getElementById('treePersonModal').style.display='none';
+  _treeActivePersonId=null;
+}
+function setTreePersonGender(g){
+  const p=familyTree.find(x=>x.id===_treeActivePersonId);if(!p)return;
+  p.gender=g;_renderTreeGenderButtons(g);save();renderFamilyTree();
+}
+function saveTreePersonName(){
+  const p=familyTree.find(x=>x.id===_treeActivePersonId);if(!p)return;
+  const v=(document.getElementById('treePersonNameInp').value||'').trim();
+  if(v)p.name=v;
+  save();renderFamilyTree();
+}
+function deleteTreePerson(){
+  const p=familyTree.find(x=>x.id===_treeActivePersonId);if(!p)return;
+  if(!confirm('למחוק את '+(p.name||'האדם הזה')+'? הקשרים המשפחתיים שלו יוסרו, אבל שאר בני המשפחה יישארו בעץ.'))return;
+  const id=p.id;
+  familyTree=familyTree.filter(x=>x.id!==id);
+  familyTree.forEach(x=>{
+    if(x.parentIds)x.parentIds=x.parentIds.filter(pid=>pid!==id);
+    if(x.spouseIds)x.spouseIds=x.spouseIds.filter(sid=>sid!==id);
+  });
+  closeTreePersonModal();
+  save();renderFamilyTree();
+}
+function addRootTreePerson(){
+  _treeActivePersonId=null;
+  openTreeAddModal('root');
+}
+function openTreeAddModal(relation){
+  if(relation==='sibling'){
+    const p=familyTree.find(x=>x.id===_treeActivePersonId);
+    if(!p||!p.parentIds||!p.parentIds.length){alert('קודם צריך שלאדם הזה יהיה הורה בעץ — לחצו "הוסף הורה", ורק אז אפשר להוסיף אח/אחות.');return;}
+  }
+  _treeAddRelation=relation;
+  const titles={root:'הוספת אדם',parent:'הוספת הורה',spouse:'הוספת בן/בת זוג',sibling:'הוספת אח/אחות',child:'הוספת ילד/ה'};
+  document.getElementById('treeAddModalTitle').textContent=titles[relation]||'הוספת אדם';
+  document.getElementById('treeAddNameInp').value='';
+  document.getElementById('treeAddModal').style.display='flex';
+  setTimeout(()=>document.getElementById('treeAddNameInp')?.focus(),50);
+}
+function closeTreeAddModal(){
+  document.getElementById('treeAddModal').style.display='none';
+}
+function confirmTreeAdd(){
+  const name=(document.getElementById('treeAddNameInp').value||'').trim();
+  if(!name)return;
+  const relation=_treeAddRelation;
+  const base=familyTree.find(x=>x.id===_treeActivePersonId);
+  const newPerson={id:nxtTreePerson++,name,gender:'',parentIds:[],spouseIds:[]};
+  if(relation==='parent'){
+    if(!base)return;
+    if(!base.parentIds)base.parentIds=[];
+    if(base.parentIds.length>=2){alert('כבר יש לאדם הזה 2 הורים.');return;}
+    base.parentIds.push(newPerson.id);
+  }else if(relation==='spouse'){
+    if(!base)return;
+    if(!base.spouseIds)base.spouseIds=[];
+    base.spouseIds.push(newPerson.id);
+    newPerson.spouseIds=[base.id];
+  }else if(relation==='sibling'){
+    if(!base)return;
+    newPerson.parentIds=[...(base.parentIds||[])];
+  }else if(relation==='child'){
+    if(!base)return;
+    const spouseIds=base.spouseIds||[];
+    newPerson.parentIds=spouseIds.length===1?[base.id,spouseIds[0]]:[base.id];
+  }
+  familyTree.push(newPerson);
+  closeTreeAddModal();
+  closeTreePersonModal();
+  save();renderFamilyTree();
+}
+
 function openFundDetail(){
   renderFund();
   document.getElementById('fundDetailOverlay').style.display='flex';
