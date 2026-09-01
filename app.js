@@ -592,6 +592,42 @@ async function save(){
 
 
 
+// Restores every locally-cached field (see saveLocal()) into the live
+// variables. Used both when a save failed outright (network error) and when
+// a save was left pending across a refresh — those two paths used to only
+// share families/events/fund, so a pending familyTree/messages/polls/etc.
+// change would silently get discarded and then re-saved over the real data.
+function _restoreAllFromLocalCache(){
+  const ev=localStorage.getItem('fe');if(ev)events=JSON.parse(ev);
+  const fa=localStorage.getItem('ff');if(fa)families=JSON.parse(fa);
+  const fd=localStorage.getItem('fund');if(fd){const p=JSON.parse(fd);fund=p.famBalances?p:{famBalances:{},transactions:p.transactions||[]};}
+  const tx=localStorage.getItem('nxtTx');if(tx)nxtTx=parseInt(tx);
+  const gf=localStorage.getItem('goalFunds');if(gf)goalFunds=JSON.parse(gf);
+  const ap=localStorage.getItem('adminPass');if(ap)adminPass=ap;
+  const msgs=localStorage.getItem('messages');if(msgs)messages=JSON.parse(msgs);
+  const cals=localStorage.getItem('calItems');if(cals)calItems=JSON.parse(cals);
+  const bds=localStorage.getItem('birthdays');if(bds)birthdays=JSON.parse(bds);
+  const pcs=localStorage.getItem('paymentClaims');if(pcs)paymentClaims=JSON.parse(pcs);
+  const vst=localStorage.getItem('visits');if(vst)visits=JSON.parse(vst);
+  const nts=localStorage.getItem('notifications');if(nts)notifications=JSON.parse(nts);
+  const pls=localStorage.getItem('polls');if(pls)polls=JSON.parse(pls);
+  const cds=localStorage.getItem('countdowns');if(cds)countdowns=JSON.parse(cds);
+  const yhz=localStorage.getItem('yahrzeits');if(yhz)yahrzeits=JSON.parse(yhz);
+  const ftr=localStorage.getItem('familyTree');if(ftr)familyTree=JSON.parse(ftr);
+  nxtMsg=messages.length?Math.max(...messages.map(m=>m.id))+1:1;
+  nxtCal=calItems.length?Math.max(...calItems.map(c=>c.id))+1:1;
+  nxtBday=birthdays.length?Math.max(...birthdays.map(b=>b.id))+1:1;
+  nxtClaim=paymentClaims.length?Math.max(...paymentClaims.map(c=>c.id))+1:1;
+  nxtNotif=notifications.length?Math.max(...notifications.map(n=>n.id))+1:1;
+  nxtPoll=polls.length?Math.max(...polls.map(p=>p.id))+1:1;
+  nxtCountdown=countdowns.length?Math.max(...countdowns.map(c=>c.id))+1:1;
+  nxtYahrzeit=yahrzeits.length?Math.max(...yahrzeits.map(y=>y.id))+1:1;
+  nxtTreePerson=familyTree.length?Math.max(...familyTree.map(p=>p.id))+1:1;
+  nxtId=events.length?Math.max(...events.map(e=>e.id))+1:1;
+  nxtFam=families.length?Math.max(...families.map(f=>f.id))+1:1;
+  nxtGoal=goalFunds.length?Math.max(...goalFunds.map(g=>g.id))+1:1;
+  if(!fund.famBalances)fund.famBalances={};
+}
 async function load(){
   showSyncStatus('טוען...');
   try{
@@ -640,50 +676,14 @@ async function load(){
       localStorage.removeItem('pendingSaveAt');
     }
     if(localStorage.getItem('pendingSave')==='1'){
-      const localFa=localStorage.getItem('ff');const localEv=localStorage.getItem('fe');
-      const localFd=localStorage.getItem('fund');
-      if(localFa)families=JSON.parse(localFa);
-      if(localEv)events=JSON.parse(localEv);
-      if(localFd){const p=JSON.parse(localFd);fund=p.famBalances?p:{famBalances:{},transactions:p.transactions||[]};}
-      nxtId=events.length?Math.max(...events.map(e=>e.id))+1:1;
-      nxtFam=families.length?Math.max(...families.map(f=>f.id))+1:1;
+      try{_restoreAllFromLocalCache();}catch(e2){}
       _saving=false;save();
     } else {
       showSyncStatus('✓ מסונכרן',2000);
     }
   }catch(e){
     console.warn('load failed:',e);
-    try{
-      const ev=localStorage.getItem('fe');if(ev)events=JSON.parse(ev);
-      const fa=localStorage.getItem('ff');if(fa)families=JSON.parse(fa);
-      const fd=localStorage.getItem('fund');if(fd){const p=JSON.parse(fd);fund=p.famBalances?p:{famBalances:{},transactions:p.transactions||[]};}
-      const tx=localStorage.getItem('nxtTx');if(tx)nxtTx=parseInt(tx);
-      const gf=localStorage.getItem('goalFunds');if(gf)goalFunds=JSON.parse(gf);
-      const ap=localStorage.getItem('adminPass');if(ap)adminPass=ap;
-      const msgs=localStorage.getItem('messages');if(msgs)messages=JSON.parse(msgs);
-      const cals=localStorage.getItem('calItems');if(cals)calItems=JSON.parse(cals);
-      const bds=localStorage.getItem('birthdays');if(bds)birthdays=JSON.parse(bds);
-      const pcs=localStorage.getItem('paymentClaims');if(pcs)paymentClaims=JSON.parse(pcs);
-      const vst=localStorage.getItem('visits');if(vst)visits=JSON.parse(vst);
-      const nts=localStorage.getItem('notifications');if(nts)notifications=JSON.parse(nts);
-      const pls=localStorage.getItem('polls');if(pls)polls=JSON.parse(pls);
-      const cds=localStorage.getItem('countdowns');if(cds)countdowns=JSON.parse(cds);
-      const yhz=localStorage.getItem('yahrzeits');if(yhz)yahrzeits=JSON.parse(yhz);
-      const ftr=localStorage.getItem('familyTree');if(ftr)familyTree=JSON.parse(ftr);
-      nxtMsg=messages.length?Math.max(...messages.map(m=>m.id))+1:1;
-      nxtCal=calItems.length?Math.max(...calItems.map(c=>c.id))+1:1;
-      nxtBday=birthdays.length?Math.max(...birthdays.map(b=>b.id))+1:1;
-      nxtClaim=paymentClaims.length?Math.max(...paymentClaims.map(c=>c.id))+1:1;
-      nxtNotif=notifications.length?Math.max(...notifications.map(n=>n.id))+1:1;
-      nxtPoll=polls.length?Math.max(...polls.map(p=>p.id))+1:1;
-      nxtCountdown=countdowns.length?Math.max(...countdowns.map(c=>c.id))+1:1;
-      nxtYahrzeit=yahrzeits.length?Math.max(...yahrzeits.map(y=>y.id))+1:1;
-      nxtTreePerson=familyTree.length?Math.max(...familyTree.map(p=>p.id))+1:1;
-      nxtId=events.reduce((a,e)=>Math.max(a,e.id),0)+1;
-      nxtFam=families.reduce((a,f)=>Math.max(a,f.id),0)+1;
-      nxtGoal=goalFunds.length?Math.max(...goalFunds.map(g=>g.id))+1:1;
-      if(!fund.famBalances)fund.famBalances={};
-    }catch(e2){}
+    try{_restoreAllFromLocalCache();}catch(e2){}
     showSyncStatus('⚠ מקומי בלבד',3000);
   }finally{
     let _kidsMigrated=false;
@@ -696,7 +696,12 @@ async function load(){
     });
     const _bdaysCleared=birthdays.length>0;
     if(_bdaysCleared)birthdays=[];
-    if(_kidsMigrated||_bdaysCleared)save();
+    // Older tree data (or data cached before this fix) could carry an
+    // undefined sourceFamId — Firestore's setDoc throws on that, silently
+    // breaking every save from then on, so backfill it to null here.
+    let _treeMigrated=false;
+    familyTree.forEach(p=>{ if(p.sourceFamId===undefined){p.sourceFamId=null;_treeMigrated=true;} });
+    if(_kidsMigrated||_bdaysCleared||_treeMigrated)save();
     render();setTimeout(handleHash,100);
     if(!_isAdminPage()){
       const savedFamId=localStorage.getItem('deviceFamId3');
@@ -2647,8 +2652,8 @@ function seedFamilyTreeIfEmpty(){
 }
 function _buildSeedFamilyTree(){
   const people=[];
-  const root1={id:nxtTreePerson++,name:'הורה 1',gender:'',parentIds:[],spouseIds:[]};
-  const root2={id:nxtTreePerson++,name:'הורה 2',gender:'',parentIds:[],spouseIds:[root1.id]};
+  const root1={id:nxtTreePerson++,name:'הורה 1',gender:'',parentIds:[],spouseIds:[],sourceFamId:null};
+  const root2={id:nxtTreePerson++,name:'הורה 2',gender:'',parentIds:[],spouseIds:[root1.id],sourceFamId:null};
   root1.spouseIds.push(root2.id);
   people.push(root1,root2);
   const rootIds=[root1.id,root2.id];
@@ -2984,7 +2989,9 @@ function confirmTreeAdd(){
   if(!name)return;
   const relation=_treeAddRelation;
   const base=familyTree.find(x=>x.id===_treeActivePersonId);
-  const newPerson={id:nxtTreePerson++,name,gender:'',parentIds:[],spouseIds:[],sourceFamId:base?base.sourceFamId:null};
+  // Firestore's setDoc throws on any `undefined` field value, so this must
+  // never end up undefined (e.g. when base is the seeded root placeholder).
+  const newPerson={id:nxtTreePerson++,name,gender:'',parentIds:[],spouseIds:[],sourceFamId:(base&&base.sourceFamId!=null)?base.sourceFamId:null};
   if(relation==='parent'){
     if(!base)return;
     if(!base.parentIds)base.parentIds=[];
