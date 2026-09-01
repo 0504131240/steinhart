@@ -2906,6 +2906,12 @@ function openTreePersonModal(id){
   _renderTreeGenderButtons(p.gender||'');
   const addParentBtn=document.getElementById('treeAddParentBtn');
   if(addParentBtn)addParentBtn.style.display=(p.parentIds&&p.parentIds.length>=2)?'none':'block';
+  // Hiding this once a spouse already exists prevents the confusing state
+  // of ending up with 3+ "spouses" on one person — e.g. clicking "add
+  // spouse" on the seeded root couple's placeholder instead of just
+  // renaming the already-existing placeholder "הורה 2" card.
+  const addSpouseBtn=document.getElementById('treeAddSpouseBtn');
+  if(addSpouseBtn)addSpouseBtn.style.display=(p.spouseIds&&p.spouseIds.length>0)?'none':'block';
   document.getElementById('treePersonModal').style.display='flex';
 }
 function closeTreePersonModal(){
@@ -2939,6 +2945,7 @@ function moveTreeSibling(dir){
   if(swapIdx==null)return;
   [familyTree[idx],familyTree[swapIdx]]=[familyTree[swapIdx],familyTree[idx]];
   save();renderFamilyTree();
+  setTimeout(fitTreeToScreen,50); // layout shifted — keep the whole tree in view
 }
 function deleteTreePerson(){
   const p=familyTree.find(x=>x.id===_treeActivePersonId);if(!p)return;
@@ -2951,6 +2958,7 @@ function deleteTreePerson(){
   });
   closeTreePersonModal();
   save();renderFamilyTree();
+  setTimeout(fitTreeToScreen,50); // layout shifted — keep the whole tree in view
 }
 function addRootTreePerson(){
   _treeActivePersonId=null;
@@ -2987,6 +2995,13 @@ function confirmTreeAdd(){
     if(!base.spouseIds)base.spouseIds=[];
     base.spouseIds.push(newPerson.id);
     newPerson.spouseIds=[base.id];
+    // If this person already has kids recorded with only one parent (base),
+    // offer to attach the new spouse as their second parent too — otherwise
+    // the new spouse would show with no connection to those existing kids.
+    const singleParentKids=familyTree.filter(x=>x.parentIds&&x.parentIds.length===1&&x.parentIds[0]===base.id);
+    if(singleParentKids.length&&confirm('לשייך את '+name+' גם כהורה השני של '+singleParentKids.length+' הילדים הקיימים של '+(base.name||'האדם הזה')+'?')){
+      singleParentKids.forEach(k=>k.parentIds=[base.id,newPerson.id]);
+    }
   }else if(relation==='sibling'){
     if(!base)return;
     newPerson.parentIds=[...(base.parentIds||[])];
@@ -2999,6 +3014,7 @@ function confirmTreeAdd(){
   closeTreeAddModal();
   closeTreePersonModal();
   save();renderFamilyTree();
+  setTimeout(fitTreeToScreen,50); // layout shifted — keep the whole tree in view
 }
 
 function openFundDetail(){
