@@ -406,7 +406,10 @@
   <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--surface)">
     <button onclick="closeFamilyTreeOverlay()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);line-height:1;padding:0">✕</button>
     <span style="font-size:16px;font-weight:800;color:var(--text)">🌳 אילן יוחסין</span>
-    <button onclick="addRootTreePerson()" style="background:var(--blue-mid);color:#fff;border:none;border-radius:var(--r2);padding:7px 12px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;white-space:nowrap">+ הוסף אדם</button>
+    <div style="display:flex;gap:6px">
+      <button onclick="resetFamilyTree()" title="בנה מחדש מהנתונים" style="background:var(--surface2);color:var(--text2);border:none;border-radius:var(--r2);padding:7px 10px;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer">🔄</button>
+      <button onclick="addRootTreePerson()" style="background:var(--blue-mid);color:#fff;border:none;border-radius:var(--r2);padding:7px 12px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;white-space:nowrap">+ הוסף אדם</button>
+    </div>
   </div>
   <div style="flex:1;overflow:auto;padding:24px">
     <div id="treeCanvas" style="position:relative;transform-origin:top left"></div>
@@ -435,7 +438,6 @@
       <button onclick="openTreeAddModal('spouse')" style="padding:10px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">💍 הוסף בן/בת זוג</button>
       <button onclick="openTreeAddModal('sibling')" style="padding:10px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">👫 הוסף אח/אחות</button>
       <button onclick="openTreeAddModal('child')" style="padding:10px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">⬇️ הוסף ילד/ה</button>
-      <button id="treeResetPosBtn" onclick="resetTreePersonPosition()" style="display:none;padding:10px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">↺ מיקום אוטומטי</button>
       <button onclick="deleteTreePerson()" style="padding:10px;border-radius:var(--r2);border:1.5px solid #c33;background:transparent;color:#c33;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">🗑 מחק אדם</button>
       <button onclick="closeTreePersonModal()" style="padding:10px;border-radius:var(--r2);border:none;background:var(--surface2);color:var(--text2);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">סגור</button>
     </div>

@@ -2634,16 +2634,36 @@ function closeFamiliesHomeOverlay(){
 const TREE_NODE_W=112,TREE_NODE_H=64,TREE_H_GAP=22,TREE_COUPLE_GAP=14,TREE_LEVEL_H=150;
 let _treeActivePersonId=null,_treeAddRelation=null;
 
+// The families already in the app are treated as siblings of one another —
+// each one's own blood relative (see rootSurname below) is seeded as a
+// child of one shared placeholder root couple, instead of each family
+// being its own disconnected root. Rename that placeholder pair to the
+// real grandparents once seeded (see resetFamilyTree() to redo this from
+// scratch on an already-seeded tree).
 function seedFamilyTreeIfEmpty(){
   if(familyTree.length||!families.length)return;
+  familyTree=_buildSeedFamilyTree();
+  save();
+}
+function _buildSeedFamilyTree(){
   const people=[];
+  const root1={id:nxtTreePerson++,name:'הורה 1',gender:'',parentIds:[],spouseIds:[]};
+  const root2={id:nxtTreePerson++,name:'הורה 2',gender:'',parentIds:[],spouseIds:[root1.id]};
+  root1.spouseIds.push(root2.id);
+  people.push(root1,root2);
+  const rootIds=[root1.id,root2.id];
+  // A family carrying the app's own surname kept it (a son); any other
+  // surname married in from outside (a daughter) — just a starting guess
+  // for each family's blood relative's gender, fully editable afterward.
+  const rootSurname='שטיינהרט';
   families.forEach(f=>{
     const surname=f.name.replace('משפחת','').trim();
-    const p1={id:nxtTreePerson++,name:(f.emailName||'הורה 1')+' '+surname,gender:'',parentIds:[],spouseIds:[],birthYear:f.parent1Bday?.hebYear||null};
+    const bloodGender=surname===rootSurname?'boy':'girl';
+    const p1={id:nxtTreePerson++,name:(f.emailName||'הורה 1')+' '+surname,gender:bloodGender,parentIds:[...rootIds],spouseIds:[],birthYear:f.parent1Bday?.hebYear||null};
     people.push(p1);
     let parentIds=[p1.id];
     if(!f.parent2Removed){
-      const p2={id:nxtTreePerson++,name:(f.emailName2||'הורה 2')+' '+surname,gender:'',parentIds:[],spouseIds:[p1.id],birthYear:f.parent2Bday?.hebYear||null};
+      const p2={id:nxtTreePerson++,name:(f.emailName2||'הורה 2')+' '+surname,gender:bloodGender==='boy'?'girl':'boy',parentIds:[],spouseIds:[p1.id],birthYear:f.parent2Bday?.hebYear||null};
       p1.spouseIds.push(p2.id);
       people.push(p2);
       parentIds=[p1.id,p2.id];
@@ -2653,8 +2673,18 @@ function seedFamilyTreeIfEmpty(){
       people.push({id:nxtTreePerson++,name:k.name,gender:k.gender==='boy'||k.gender==='girl'?k.gender:'',parentIds:[...parentIds],spouseIds:[],birthYear:k.hebYear||null});
     });
   });
-  familyTree=people;
+  return people;
+}
+// Rebuilds the tree from scratch using the current families/kids data —
+// discards any manual edits made in the tree itself (added people,
+// renames, extra relations). Offered as an explicit, confirmed action
+// rather than happening automatically, since it's destructive.
+function resetFamilyTree(){
+  if(!confirm('לבנות את העץ מחדש מהנתונים הקיימים? כל עריכה ידנית בעץ (שינויי שם, אנשים שהוספתם, קשרים נוספים) תימחק ותוחלף בעץ חדש.'))return;
+  familyTree=_buildSeedFamilyTree();
   save();
+  renderFamilyTree();
+  setTimeout(fitTreeToScreen,50);
 }
 function openFamilyTreeOverlay(){
   seedFamilyTreeIfEmpty();
@@ -2724,17 +2754,13 @@ function _treeComputeLevels(people){
 // ordered by the average x of each unit's parents (a couple counts as one
 // unit so spouses stay adjacent) — a simple one-pass barycenter pass that
 // keeps most families visually under their parents without needing a full
-// graph-layout library. A person can be dragged (see _treeStartDrag) to an
-// explicit (x,y), which is honored outright here instead of being
-// auto-placed — only a couple where BOTH partners were dragged is treated
-// as a manually-placed unit; a couple with only one dragged partner still
-// auto-places both, to avoid a half-manual, half-auto unit.
+// graph-layout library. Fully automatic — nothing here is manually
+// draggable, so the layout is deterministic from the data alone.
 function _treeLayout(people){
   const byId=new Map(people.map(p=>[p.id,p]));
   const level=_treeComputeLevels(people);
   const maxLevel=people.length?Math.max(...people.map(p=>level[p.id])):0;
   const pos={};
-  const isManual=p=>p.x!=null&&p.y!=null;
   for(let li=0;li<=maxLevel;li++){
     const levelPeople=people.filter(p=>level[p.id]===li);
     const used=new Set(),units=[];
@@ -2744,16 +2770,8 @@ function _treeLayout(people){
       if(spouseId!=null){units.push({ids:[p.id,spouseId]});used.add(p.id);used.add(spouseId);}
       else{units.push({ids:[p.id]});used.add(p.id);}
     });
-    const manualUnits=units.filter(u=>u.ids.every(id=>isManual(byId.get(id))));
-    const autoUnits=units.filter(u=>!manualUnits.includes(u));
-    manualUnits.forEach(u=>{
-      u.ids.forEach(id=>{
-        const per=byId.get(id);
-        pos[id]={x:per.x,y:per.y,cx:per.x+TREE_NODE_W/2,cy:per.y+TREE_NODE_H/2,bottom:per.y+TREE_NODE_H};
-      });
-    });
     if(li>0){
-      autoUnits.forEach(u=>{
+      units.forEach(u=>{
         const parentXs=[];
         u.ids.forEach(id=>{ (byId.get(id).parentIds||[]).forEach(pid=>{ if(pos[pid])parentXs.push(pos[pid].cx); }); });
         u._key=parentXs.length?parentXs.reduce((a,b)=>a+b,0)/parentXs.length:Infinity;
@@ -2765,7 +2783,7 @@ function _treeLayout(people){
         const byrs=u.ids.map(id=>byId.get(id).birthYear).filter(y=>y!=null);
         u._ageKey=byrs.length?byrs.reduce((a,b)=>a+b,0)/byrs.length:null;
       });
-      autoUnits.sort((a,b)=>{
+      units.sort((a,b)=>{
         if(a._key!==b._key)return a._key-b._key;
         const aKnown=a._ageKey!=null,bKnown=b._ageKey!=null;
         if(aKnown&&bKnown)return b._ageKey-a._ageKey;
@@ -2774,7 +2792,7 @@ function _treeLayout(people){
       });
     }
     let x=0;
-    autoUnits.forEach(u=>{
+    units.forEach(u=>{
       u.ids.forEach((id,i)=>{
         const ix=x+i*(TREE_NODE_W+TREE_COUPLE_GAP);
         pos[id]={x:ix,y:li*TREE_LEVEL_H,cx:ix+TREE_NODE_W/2,cy:li*TREE_LEVEL_H+TREE_NODE_H/2,bottom:li*TREE_LEVEL_H+TREE_NODE_H};
@@ -2833,7 +2851,7 @@ function renderFamilyTree(){
   const cards=people.map(p=>{
     const pp=pos[p.id];if(!pp)return'';
     const ico=p.gender==='boy'?'👦':p.gender==='girl'?'👧':'👤';
-    return`<div data-tree-id="${p.id}" onpointerdown="_treeStartDrag(event,${p.id})" style="position:absolute;left:${pp.x}px;top:${pp.y}px;width:${TREE_NODE_W}px;height:${TREE_NODE_H}px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:grab;box-shadow:0 2px 6px rgba(0,0,0,0.08);padding:4px;box-sizing:border-box;text-align:center;gap:2px;touch-action:none;user-select:none">
+    return`<div onclick="openTreePersonModal(${p.id})" style="position:absolute;left:${pp.x}px;top:${pp.y}px;width:${TREE_NODE_W}px;height:${TREE_NODE_H}px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.08);padding:4px;box-sizing:border-box;text-align:center;gap:2px">
       <span style="font-size:18px;line-height:1">${ico}</span>
       <span style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(p.name||'ללא שם')}</span>
     </div>`;
@@ -2842,86 +2860,6 @@ function renderFamilyTree(){
   canvas.style.height=totalH+'px';
   canvas.innerHTML=`<svg width="${maxX}" height="${totalH}" style="position:absolute;top:0;left:0;pointer-events:none">${svgLines}</svg>${cards}`;
   applyTreeZoom();
-}
-// Every descendant (children, grandchildren, ...) of a person, found by
-// repeatedly following whoever lists them in parentIds — used so dragging
-// someone takes their whole "below them" branch along, not just that card.
-function _treeDescendants(id,people){
-  const byParent=new Map();
-  people.forEach(p=>{ (p.parentIds||[]).forEach(pid=>{
-    if(!byParent.has(pid))byParent.set(pid,[]);
-    byParent.get(pid).push(p.id);
-  }); });
-  const result=new Set(),queue=[id];
-  while(queue.length){
-    const cur=queue.pop();
-    (byParent.get(cur)||[]).forEach(kid=>{ if(!result.has(kid)){result.add(kid);queue.push(kid);} });
-  }
-  return result;
-}
-// Drag-to-reposition: a person can be moved anywhere on the canvas, and that
-// explicit (x,y) is then honored by _treeLayout instead of the auto layout
-// for that person specifically — everyone else keeps auto-arranging around
-// it. A pointerdown that never moves past a small threshold is treated as a
-// tap (opens the person's action sheet) rather than a drag, so clicking
-// still works exactly as before.
-let _treeDrag=null;
-function _treeStartDrag(e,id){
-  e.preventDefault();
-  const card=e.currentTarget;
-  card.setPointerCapture(e.pointerId);
-  const canvas=document.getElementById('treeCanvas');
-  // Drag the whole branch below this person along with them (their kids,
-  // grandkids, ...) — only their own card tracks the pointer directly, the
-  // rest just get shifted by the same delta each move.
-  const group=[id,..._treeDescendants(id,familyTree)].map(gid=>{
-    const el=canvas?.querySelector(`[data-tree-id="${gid}"]`);
-    if(!el)return null;
-    return {id:gid,el,origLeft:parseFloat(el.style.left)||0,origTop:parseFloat(el.style.top)||0};
-  }).filter(Boolean);
-  _treeDrag={id,card,group,startX:e.clientX,startY:e.clientY,moved:false};
-  card.style.cursor='grabbing';
-  card.onpointermove=_treeDragMove;
-  card.onpointerup=_treeDragEnd;
-  card.onpointercancel=_treeDragEnd;
-}
-function _treeDragMove(e){
-  const d=_treeDrag;if(!d)return;
-  const dx=e.clientX-d.startX,dy=e.clientY-d.startY;
-  if(!d.moved&&(Math.abs(dx)>4||Math.abs(dy)>4)){
-    d.moved=true;
-    d.group.forEach(g=>{g.el.style.zIndex=10;});
-  }
-  if(!d.moved)return;
-  // dx/dy are real screen pixels, but the canvas is CSS-scaled by _treeZoom,
-  // so the same screen movement must translate to a bigger/smaller change in
-  // each card's own (unscaled) left/top the more zoomed out/in the view is.
-  const ddx=dx/_treeZoom,ddy=dy/_treeZoom;
-  d.group.forEach(g=>{
-    g.el.style.left=(g.origLeft+ddx)+'px';
-    g.el.style.top=(g.origTop+ddy)+'px';
-  });
-}
-function _treeDragEnd(e){
-  const d=_treeDrag;if(!d)return;
-  d.card.onpointermove=null;d.card.onpointerup=null;d.card.onpointercancel=null;
-  d.card.style.cursor='grab';
-  d.group.forEach(g=>{g.el.style.zIndex='';});
-  _treeDrag=null;
-  if(!d.moved){openTreePersonModal(d.id);return;}
-  d.group.forEach(g=>{
-    const p=familyTree.find(x=>x.id===g.id);if(!p)return;
-    p.x=parseFloat(g.el.style.left);
-    p.y=parseFloat(g.el.style.top);
-  });
-  save();
-  renderFamilyTree();
-}
-function resetTreePersonPosition(){
-  const p=familyTree.find(x=>x.id===_treeActivePersonId);if(!p)return;
-  delete p.x;delete p.y;
-  closeTreePersonModal();
-  save();renderFamilyTree();
 }
 function _treeGenderBtnMap(){return{'':'treeGenderNone',boy:'treeGenderBoy',girl:'treeGenderGirl'};}
 function _renderTreeGenderButtons(g){
@@ -2941,8 +2879,6 @@ function openTreePersonModal(id){
   _renderTreeGenderButtons(p.gender||'');
   const addParentBtn=document.getElementById('treeAddParentBtn');
   if(addParentBtn)addParentBtn.style.display=(p.parentIds&&p.parentIds.length>=2)?'none':'block';
-  const resetPosBtn=document.getElementById('treeResetPosBtn');
-  if(resetPosBtn)resetPosBtn.style.display=(p.x!=null&&p.y!=null)?'block':'none';
   document.getElementById('treePersonModal').style.display='flex';
 }
 function closeTreePersonModal(){
