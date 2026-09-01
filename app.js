@@ -2819,6 +2819,19 @@ function _treeLayout(people){
         const first=spans[0],last=spans[spans.length-1];
         const center=((first.x+first.width/2)+(last.x+last.width/2))/2;
         x=Math.max(minX,center-width/2);
+      } else {
+        // Every recorded kid here was already claimed as a spouse inside a
+        // *different* parent unit's branch (both sides of a couple have
+        // their own separately-recorded parents) — center over wherever
+        // that kid actually ended up instead of leaving this unit at the
+        // default cursor spot, so its connector drops straight down onto
+        // the real position instead of stretching across the whole tree.
+        const already=kids.map(k=>pos[k.id]).filter(Boolean);
+        if(already.length){
+          const cxs=already.map(pp=>pp.cx);
+          const center=(Math.min(...cxs)+Math.max(...cxs))/2;
+          x=Math.max(minX,center-width/2);
+        }
       }
     }
     levelCursor[unit.level]=x+width+TREE_H_GAP;
@@ -2860,6 +2873,7 @@ function renderFamilyTree(){
   });
   // Group children sharing the exact same parent set so siblings share one
   // drop line + bus instead of a tangle of separate lines.
+  const byId=new Map(people.map(p=>[p.id,p]));
   const groups=new Map();
   people.forEach(p=>{
     if(!p.parentIds||!p.parentIds.length)return;
@@ -2867,19 +2881,42 @@ function renderFamilyTree(){
     if(!groups.has(key))groups.set(key,{parentIds:p.parentIds,kids:[]});
     groups.get(key).kids.push(p.id);
   });
-  groups.forEach(g=>{
+  // A kid whose spouse ALSO has their own separately-recorded parents (both
+  // sides of a couple with known, different lineages) gets pulled into that
+  // spouse's own parent branch for positioning (see _treeLayout) — so this
+  // group's own line down to them can end up far away, overlapping other
+  // lines and reading as one shared parent group. Mark those as dashed so
+  // it's visually clear this is "married in from a separately-tracked
+  // family" rather than a normal shared child.
+  function _isMarriedElsewhere(kidId,groupKey){
+    const kid=byId.get(kidId);if(!kid)return false;
+    return(kid.spouseIds||[]).some(sid=>{
+      const sp=byId.get(sid);
+      if(!sp||!sp.parentIds||!sp.parentIds.length)return false;
+      return[...sp.parentIds].sort((a,b)=>a-b).join(',')!==groupKey;
+    });
+  }
+  groups.forEach((g,key)=>{
     const parentPoints=g.parentIds.map(pid=>pos[pid]).filter(Boolean);
-    const kidXs=g.kids.map(kid=>pos[kid]?pos[kid].cx:null).filter(x=>x!=null);
-    if(!parentPoints.length||!kidXs.length)return;
+    if(!parentPoints.length)return;
     const dropX=parentPoints.reduce((s,pp)=>s+pp.cx,0)/parentPoints.length;
     const dropY=Math.max(...parentPoints.map(pp=>pp.bottom));
     const busY=dropY+TREE_LEVEL_H/2;
-    svgLines+=`<line x1="${dropX}" y1="${dropY}" x2="${dropX}" y2="${busY}" stroke="var(--border)" stroke-width="2"/>`;
-    const minX=Math.min(dropX,...kidXs),maxXk=Math.max(dropX,...kidXs);
-    svgLines+=`<line x1="${minX}" y1="${busY}" x2="${maxXk}" y2="${busY}" stroke="var(--border)" stroke-width="2"/>`;
-    g.kids.forEach(kid=>{
-      const kp=pos[kid];if(!kp)return;
-      svgLines+=`<line x1="${kp.cx}" y1="${busY}" x2="${kp.cx}" y2="${kp.y}" stroke="var(--border)" stroke-width="2"/>`;
+    const localKids=g.kids.filter(kid=>pos[kid]&&!_isMarriedElsewhere(kid,key));
+    const farKids=g.kids.filter(kid=>pos[kid]&&_isMarriedElsewhere(kid,key));
+    if(localKids.length){
+      const kidXs=localKids.map(kid=>pos[kid].cx);
+      svgLines+=`<line x1="${dropX}" y1="${dropY}" x2="${dropX}" y2="${busY}" stroke="var(--border)" stroke-width="2"/>`;
+      const minX=Math.min(dropX,...kidXs),maxXk=Math.max(dropX,...kidXs);
+      svgLines+=`<line x1="${minX}" y1="${busY}" x2="${maxXk}" y2="${busY}" stroke="var(--border)" stroke-width="2"/>`;
+      localKids.forEach(kid=>{
+        const kp=pos[kid];
+        svgLines+=`<line x1="${kp.cx}" y1="${busY}" x2="${kp.cx}" y2="${kp.y}" stroke="var(--border)" stroke-width="2"/>`;
+      });
+    }
+    farKids.forEach(kid=>{
+      const kp=pos[kid];
+      svgLines+=`<line x1="${dropX}" y1="${dropY}" x2="${kp.cx}" y2="${kp.y}" stroke="var(--text2)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
     });
   });
   const cards=people.map(p=>{
