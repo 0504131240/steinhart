@@ -2779,7 +2779,13 @@ function _treeLayout(people){
   function makeUnit(p){
     if(usedInUnit.has(p.id))return null;
     const spouseId=(p.spouseIds||[]).find(sid=>byId.has(sid)&&level[sid]===level[p.id]&&!usedInUnit.has(sid));
-    const ids=spouseId!=null?[p.id,spouseId]:[p.id];
+    let ids=spouseId!=null?[p.id,spouseId]:[p.id];
+    // Within a couple the male always renders on the right (higher x) —
+    // sort is stable so a same-gender/unset pair keeps its original order.
+    if(ids.length===2){
+      const male=id=>byId.get(id).gender==='boy'?1:0;
+      ids=ids.slice().sort((a,b)=>male(a)-male(b));
+    }
     ids.forEach(id=>usedInUnit.add(id));
     return {ids,level:level[p.id]};
   }
