@@ -430,8 +430,9 @@
       <button id="treeGenderBoy" onclick="setTreePersonGender('boy')" style="padding:5px 10px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-family:var(--font);cursor:pointer">👦 זכר</button>
       <button id="treeGenderGirl" onclick="setTreePersonGender('girl')" style="padding:5px 10px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-family:var(--font);cursor:pointer">👧 נקבה</button>
     </div>
-    <div style="margin-bottom:16px">
-      <input type="number" id="treePersonBirthYearInp" placeholder="שנת לידה עברית (לסידור אחים לפי גיל)" style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:7px 10px;font-size:12px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;text-align:center" onchange="saveTreePersonBirthYear()">
+    <div style="display:flex;gap:6px;justify-content:center;margin-bottom:16px">
+      <button onclick="moveTreeSibling(1)" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-family:var(--font);cursor:pointer">⟶ ימינה</button>
+      <button onclick="moveTreeSibling(-1)" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-family:var(--font);cursor:pointer">⟵ שמאלה</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px">
       <button id="treeAddParentBtn" onclick="openTreeAddModal('parent')" style="padding:10px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">⬆️ הוסף הורה</button>

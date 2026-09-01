@@ -2659,18 +2659,21 @@ function _buildSeedFamilyTree(){
   families.forEach(f=>{
     const surname=f.name.replace('משפחת','').trim();
     const bloodGender=surname===rootSurname?'boy':'girl';
-    const p1={id:nxtTreePerson++,name:(f.emailName||'הורה 1')+' '+surname,gender:bloodGender,parentIds:[...rootIds],spouseIds:[],birthYear:f.parent1Bday?.hebYear||null};
+    // Tags every person seeded from this family with the same origin id, so
+    // the tree can color-code each branch (see col() in renderFamilyTree)
+    // and it's visually obvious who belongs to whom even in a wide tree.
+    const p1={id:nxtTreePerson++,name:(f.emailName||'הורה 1')+' '+surname,gender:bloodGender,parentIds:[...rootIds],spouseIds:[],sourceFamId:f.id};
     people.push(p1);
     let parentIds=[p1.id];
     if(!f.parent2Removed){
-      const p2={id:nxtTreePerson++,name:(f.emailName2||'הורה 2')+' '+surname,gender:bloodGender==='boy'?'girl':'boy',parentIds:[],spouseIds:[p1.id],birthYear:f.parent2Bday?.hebYear||null};
+      const p2={id:nxtTreePerson++,name:(f.emailName2||'הורה 2')+' '+surname,gender:bloodGender==='boy'?'girl':'boy',parentIds:[],spouseIds:[p1.id],sourceFamId:f.id};
       p1.spouseIds.push(p2.id);
       people.push(p2);
       parentIds=[p1.id,p2.id];
     }
     (f.kids||[]).forEach(k=>{
       if(!k.name)return;
-      people.push({id:nxtTreePerson++,name:k.name,gender:k.gender==='boy'||k.gender==='girl'?k.gender:'',parentIds:[...parentIds],spouseIds:[],birthYear:k.hebYear||null});
+      people.push({id:nxtTreePerson++,name:k.name,gender:k.gender==='boy'||k.gender==='girl'?k.gender:'',parentIds:[...parentIds],spouseIds:[],sourceFamId:f.id});
     });
   });
   return people;
@@ -2775,21 +2778,12 @@ function _treeLayout(people){
         const parentXs=[];
         u.ids.forEach(id=>{ (byId.get(id).parentIds||[]).forEach(pid=>{ if(pos[pid])parentXs.push(pos[pid].cx); }); });
         u._key=parentXs.length?parentXs.reduce((a,b)=>a+b,0)/parentXs.length:Infinity;
-        // Siblings share the same parents, hence the same _key above — this
-        // second key breaks that tie by birth year (oldest last/rightmost,
-        // youngest first/leftmost), so siblings line up in age order
-        // instead of arbitrary insertion order. Anyone without a known
-        // birth year sorts to the very end (past even the oldest sibling).
-        const byrs=u.ids.map(id=>byId.get(id).birthYear).filter(y=>y!=null);
-        u._ageKey=byrs.length?byrs.reduce((a,b)=>a+b,0)/byrs.length:null;
       });
-      units.sort((a,b)=>{
-        if(a._key!==b._key)return a._key-b._key;
-        const aKnown=a._ageKey!=null,bKnown=b._ageKey!=null;
-        if(aKnown&&bKnown)return b._ageKey-a._ageKey;
-        if(aKnown!==bKnown)return aKnown?-1:1;
-        return 0;
-      });
+      // Siblings share identical parents, hence an identical _key above —
+      // JS's sort is stable, so ties keep their existing relative order in
+      // `familyTree`, which moveTreeSibling() lets you nudge left/right
+      // directly instead of relying on birth-year data that's often missing.
+      units.sort((a,b)=>a._key-b._key);
     }
     let x=0;
     units.forEach(u=>{
@@ -2851,7 +2845,12 @@ function renderFamilyTree(){
   const cards=people.map(p=>{
     const pp=pos[p.id];if(!pp)return'';
     const ico=p.gender==='boy'?'👦':p.gender==='girl'?'👧':'👤';
-    return`<div onclick="openTreePersonModal(${p.id})" style="position:absolute;left:${pp.x}px;top:${pp.y}px;width:${TREE_NODE_W}px;height:${TREE_NODE_H}px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.08);padding:4px;box-sizing:border-box;text-align:center;gap:2px">
+    // Every person seeded from the same original family (see sourceFamId in
+    // _buildSeedFamilyTree) shares the same accent color — makes it obvious
+    // at a glance which branch/family a card belongs to in a wide tree.
+    const branchColor=p.sourceFamId!=null?col(p.sourceFamId).c:null;
+    const borderStyle=branchColor?`border:1.5px solid var(--border);border-top:4px solid ${branchColor}`:'border:1.5px solid var(--border)';
+    return`<div onclick="openTreePersonModal(${p.id})" style="position:absolute;left:${pp.x}px;top:${pp.y}px;width:${TREE_NODE_W}px;height:${TREE_NODE_H}px;background:var(--surface);${borderStyle};border-radius:var(--r2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.08);padding:4px;box-sizing:border-box;text-align:center;gap:2px">
       <span style="font-size:18px;line-height:1">${ico}</span>
       <span style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(p.name||'ללא שם')}</span>
     </div>`;
@@ -2875,7 +2874,6 @@ function openTreePersonModal(id){
   _treeActivePersonId=id;
   const p=familyTree.find(x=>x.id===id);if(!p)return;
   document.getElementById('treePersonNameInp').value=p.name||'';
-  document.getElementById('treePersonBirthYearInp').value=p.birthYear||'';
   _renderTreeGenderButtons(p.gender||'');
   const addParentBtn=document.getElementById('treeAddParentBtn');
   if(addParentBtn)addParentBtn.style.display=(p.parentIds&&p.parentIds.length>=2)?'none':'block';
@@ -2895,11 +2893,22 @@ function saveTreePersonName(){
   if(v)p.name=v;
   save();renderFamilyTree();
 }
-function saveTreePersonBirthYear(){
+// Swaps this person's position in `familyTree` with the sibling immediately
+// to their left/right (same parent set — see _treeLayout's stable-sort tie
+// order) — a constrained, no-mess way to control left-right order directly,
+// instead of relying on birth-year data that's often missing or free-form
+// dragging that got confusing.
+function moveTreeSibling(dir){
   const p=familyTree.find(x=>x.id===_treeActivePersonId);if(!p)return;
-  const raw=document.getElementById('treePersonBirthYearInp').value;
-  const v=raw?parseInt(raw):null;
-  p.birthYear=v&&!isNaN(v)?v:null;
+  const key=ids=>[...(ids||[])].sort((a,b)=>a-b).join(',');
+  const myKey=key(p.parentIds);
+  const siblingIdxs=[];
+  familyTree.forEach((x,i)=>{ if(key(x.parentIds)===myKey)siblingIdxs.push(i); });
+  const idx=familyTree.indexOf(p);
+  const pos=siblingIdxs.indexOf(idx);
+  const swapIdx=siblingIdxs[pos+dir];
+  if(swapIdx==null)return;
+  [familyTree[idx],familyTree[swapIdx]]=[familyTree[swapIdx],familyTree[idx]];
   save();renderFamilyTree();
 }
 function deleteTreePerson(){
@@ -2938,7 +2947,7 @@ function confirmTreeAdd(){
   if(!name)return;
   const relation=_treeAddRelation;
   const base=familyTree.find(x=>x.id===_treeActivePersonId);
-  const newPerson={id:nxtTreePerson++,name,gender:'',parentIds:[],spouseIds:[]};
+  const newPerson={id:nxtTreePerson++,name,gender:'',parentIds:[],spouseIds:[],sourceFamId:base?base.sourceFamId:null};
   if(relation==='parent'){
     if(!base)return;
     if(!base.parentIds)base.parentIds=[];
