@@ -225,6 +225,12 @@ function openPaymentSettingsModal(){
 function closePaymentSettingsModal(){
   document.getElementById('paymentSettingsModal').style.display='none';
 }
+function openSettingsHubModal(){
+  document.getElementById('settingsHubModal').style.display='flex';
+}
+function closeSettingsHubModal(){
+  document.getElementById('settingsHubModal').style.display='none';
+}
 
 // EmailJS settings
 async function loadEjsSettings(){
