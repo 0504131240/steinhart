@@ -2660,6 +2660,7 @@ function openFamilyTreeOverlay(){
   seedFamilyTreeIfEmpty();
   document.getElementById('familyTreeOverlay').style.display='flex';
   renderFamilyTree();
+  setTimeout(fitTreeToScreen,50); // canvas needs a layout pass first for its size to be known
 }
 function closeFamilyTreeOverlay(){
   document.getElementById('familyTreeOverlay').style.display='none';
@@ -2667,6 +2668,25 @@ function closeFamilyTreeOverlay(){
 function renderFamilyTreeIfOpen(){
   const overlay=document.getElementById('familyTreeOverlay');
   if(overlay&&overlay.style.display==='flex')renderFamilyTree();
+}
+// Zoom is a CSS transform on #treeCanvas — offsetWidth/Height stay the
+// untransformed layout size regardless of scale, so "fit to screen" just
+// compares that natural size against the scrollable wrapper's viewport.
+let _treeZoom=1;
+function applyTreeZoom(){
+  const c=document.getElementById('treeCanvas');if(c)c.style.transform='scale('+_treeZoom+')';
+}
+function zoomTree(delta){
+  _treeZoom=Math.max(0.2,Math.min(2,Math.round((_treeZoom+delta)*100)/100));
+  applyTreeZoom();
+}
+function fitTreeToScreen(){
+  const c=document.getElementById('treeCanvas');if(!c)return;
+  const wrap=c.parentElement;if(!wrap||!c.offsetWidth||!c.offsetHeight)return;
+  const fit=Math.min((wrap.clientWidth-48)/c.offsetWidth,(wrap.clientHeight-48)/c.offsetHeight,1);
+  _treeZoom=Math.max(0.15,Math.round(fit*100)/100);
+  applyTreeZoom();
+  wrap.scrollTop=0;wrap.scrollLeft=0;
 }
 // Assigns each person a generation level via BFS from roots (no parents),
 // then aligns spouses to the same (max) level so a married-in partner sits
@@ -2808,6 +2828,7 @@ function renderFamilyTree(){
   canvas.style.width=maxX+'px';
   canvas.style.height=totalH+'px';
   canvas.innerHTML=`<svg width="${maxX}" height="${totalH}" style="position:absolute;top:0;left:0;pointer-events:none">${svgLines}</svg>${cards}`;
+  applyTreeZoom();
 }
 // Drag-to-reposition: a person can be moved anywhere on the canvas, and that
 // explicit (x,y) is then honored by _treeLayout instead of the auto layout
@@ -2832,8 +2853,11 @@ function _treeDragMove(e){
   const dx=e.clientX-d.startX,dy=e.clientY-d.startY;
   if(!d.moved&&(Math.abs(dx)>4||Math.abs(dy)>4)){d.moved=true;d.card.style.zIndex=10;}
   if(!d.moved)return;
-  d.card.style.left=(d.origLeft+dx)+'px';
-  d.card.style.top=(d.origTop+dy)+'px';
+  // dx/dy are real screen pixels, but the canvas is CSS-scaled by _treeZoom,
+  // so the same screen movement must translate to a bigger/smaller change in
+  // the card's own (unscaled) left/top the more zoomed out/in the view is.
+  d.card.style.left=(d.origLeft+dx/_treeZoom)+'px';
+  d.card.style.top=(d.origTop+dy/_treeZoom)+'px';
 }
 function _treeDragEnd(e){
   const d=_treeDrag;if(!d)return;
