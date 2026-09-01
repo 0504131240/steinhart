@@ -2639,18 +2639,18 @@ function seedFamilyTreeIfEmpty(){
   const people=[];
   families.forEach(f=>{
     const surname=f.name.replace('משפחת','').trim();
-    const p1={id:nxtTreePerson++,name:(f.emailName||'הורה 1')+' '+surname,gender:'',parentIds:[],spouseIds:[]};
+    const p1={id:nxtTreePerson++,name:(f.emailName||'הורה 1')+' '+surname,gender:'',parentIds:[],spouseIds:[],birthYear:f.parent1Bday?.hebYear||null};
     people.push(p1);
     let parentIds=[p1.id];
     if(!f.parent2Removed){
-      const p2={id:nxtTreePerson++,name:(f.emailName2||'הורה 2')+' '+surname,gender:'',parentIds:[],spouseIds:[p1.id]};
+      const p2={id:nxtTreePerson++,name:(f.emailName2||'הורה 2')+' '+surname,gender:'',parentIds:[],spouseIds:[p1.id],birthYear:f.parent2Bday?.hebYear||null};
       p1.spouseIds.push(p2.id);
       people.push(p2);
       parentIds=[p1.id,p2.id];
     }
     (f.kids||[]).forEach(k=>{
       if(!k.name)return;
-      people.push({id:nxtTreePerson++,name:k.name,gender:k.gender==='boy'||k.gender==='girl'?k.gender:'',parentIds:[...parentIds],spouseIds:[]});
+      people.push({id:nxtTreePerson++,name:k.name,gender:k.gender==='boy'||k.gender==='girl'?k.gender:'',parentIds:[...parentIds],spouseIds:[],birthYear:k.hebYear||null});
     });
   });
   familyTree=people;
@@ -2757,8 +2757,14 @@ function _treeLayout(people){
         const parentXs=[];
         u.ids.forEach(id=>{ (byId.get(id).parentIds||[]).forEach(pid=>{ if(pos[pid])parentXs.push(pos[pid].cx); }); });
         u._key=parentXs.length?parentXs.reduce((a,b)=>a+b,0)/parentXs.length:Infinity;
+        // Siblings share the same parents, hence the same _key above — this
+        // second key breaks that tie by birth year (oldest first/leftmost),
+        // so siblings line up in age order instead of arbitrary insertion
+        // order. Anyone without a known birth year sorts to the end.
+        const byrs=u.ids.map(id=>byId.get(id).birthYear).filter(y=>y!=null);
+        u._ageKey=byrs.length?byrs.reduce((a,b)=>a+b,0)/byrs.length:Infinity;
       });
-      autoUnits.sort((a,b)=>a._key-b._key);
+      autoUnits.sort((a,b)=>a._key-b._key||a._ageKey-b._ageKey);
     }
     let x=0;
     autoUnits.forEach(u=>{
@@ -2820,7 +2826,7 @@ function renderFamilyTree(){
   const cards=people.map(p=>{
     const pp=pos[p.id];if(!pp)return'';
     const ico=p.gender==='boy'?'👦':p.gender==='girl'?'👧':'👤';
-    return`<div onpointerdown="_treeStartDrag(event,${p.id})" style="position:absolute;left:${pp.x}px;top:${pp.y}px;width:${TREE_NODE_W}px;height:${TREE_NODE_H}px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:grab;box-shadow:0 2px 6px rgba(0,0,0,0.08);padding:4px;box-sizing:border-box;text-align:center;gap:2px;touch-action:none;user-select:none">
+    return`<div data-tree-id="${p.id}" onpointerdown="_treeStartDrag(event,${p.id})" style="position:absolute;left:${pp.x}px;top:${pp.y}px;width:${TREE_NODE_W}px;height:${TREE_NODE_H}px;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:grab;box-shadow:0 2px 6px rgba(0,0,0,0.08);padding:4px;box-sizing:border-box;text-align:center;gap:2px;touch-action:none;user-select:none">
       <span style="font-size:18px;line-height:1">${ico}</span>
       <span style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(p.name||'ללא שם')}</span>
     </div>`;
@@ -2829,6 +2835,22 @@ function renderFamilyTree(){
   canvas.style.height=totalH+'px';
   canvas.innerHTML=`<svg width="${maxX}" height="${totalH}" style="position:absolute;top:0;left:0;pointer-events:none">${svgLines}</svg>${cards}`;
   applyTreeZoom();
+}
+// Every descendant (children, grandchildren, ...) of a person, found by
+// repeatedly following whoever lists them in parentIds — used so dragging
+// someone takes their whole "below them" branch along, not just that card.
+function _treeDescendants(id,people){
+  const byParent=new Map();
+  people.forEach(p=>{ (p.parentIds||[]).forEach(pid=>{
+    if(!byParent.has(pid))byParent.set(pid,[]);
+    byParent.get(pid).push(p.id);
+  }); });
+  const result=new Set(),queue=[id];
+  while(queue.length){
+    const cur=queue.pop();
+    (byParent.get(cur)||[]).forEach(kid=>{ if(!result.has(kid)){result.add(kid);queue.push(kid);} });
+  }
+  return result;
 }
 // Drag-to-reposition: a person can be moved anywhere on the canvas, and that
 // explicit (x,y) is then honored by _treeLayout instead of the auto layout
@@ -2841,8 +2863,16 @@ function _treeStartDrag(e,id){
   e.preventDefault();
   const card=e.currentTarget;
   card.setPointerCapture(e.pointerId);
-  _treeDrag={id,card,startX:e.clientX,startY:e.clientY,
-    origLeft:parseFloat(card.style.left)||0,origTop:parseFloat(card.style.top)||0,moved:false};
+  const canvas=document.getElementById('treeCanvas');
+  // Drag the whole branch below this person along with them (their kids,
+  // grandkids, ...) — only their own card tracks the pointer directly, the
+  // rest just get shifted by the same delta each move.
+  const group=[id,..._treeDescendants(id,familyTree)].map(gid=>{
+    const el=canvas?.querySelector(`[data-tree-id="${gid}"]`);
+    if(!el)return null;
+    return {id:gid,el,origLeft:parseFloat(el.style.left)||0,origTop:parseFloat(el.style.top)||0};
+  }).filter(Boolean);
+  _treeDrag={id,card,group,startX:e.clientX,startY:e.clientY,moved:false};
   card.style.cursor='grabbing';
   card.onpointermove=_treeDragMove;
   card.onpointerup=_treeDragEnd;
@@ -2851,23 +2881,32 @@ function _treeStartDrag(e,id){
 function _treeDragMove(e){
   const d=_treeDrag;if(!d)return;
   const dx=e.clientX-d.startX,dy=e.clientY-d.startY;
-  if(!d.moved&&(Math.abs(dx)>4||Math.abs(dy)>4)){d.moved=true;d.card.style.zIndex=10;}
+  if(!d.moved&&(Math.abs(dx)>4||Math.abs(dy)>4)){
+    d.moved=true;
+    d.group.forEach(g=>{g.el.style.zIndex=10;});
+  }
   if(!d.moved)return;
   // dx/dy are real screen pixels, but the canvas is CSS-scaled by _treeZoom,
   // so the same screen movement must translate to a bigger/smaller change in
-  // the card's own (unscaled) left/top the more zoomed out/in the view is.
-  d.card.style.left=(d.origLeft+dx/_treeZoom)+'px';
-  d.card.style.top=(d.origTop+dy/_treeZoom)+'px';
+  // each card's own (unscaled) left/top the more zoomed out/in the view is.
+  const ddx=dx/_treeZoom,ddy=dy/_treeZoom;
+  d.group.forEach(g=>{
+    g.el.style.left=(g.origLeft+ddx)+'px';
+    g.el.style.top=(g.origTop+ddy)+'px';
+  });
 }
 function _treeDragEnd(e){
   const d=_treeDrag;if(!d)return;
   d.card.onpointermove=null;d.card.onpointerup=null;d.card.onpointercancel=null;
-  d.card.style.cursor='grab';d.card.style.zIndex='';
+  d.card.style.cursor='grab';
+  d.group.forEach(g=>{g.el.style.zIndex='';});
   _treeDrag=null;
   if(!d.moved){openTreePersonModal(d.id);return;}
-  const p=familyTree.find(x=>x.id===d.id);if(!p)return;
-  p.x=parseFloat(d.card.style.left);
-  p.y=parseFloat(d.card.style.top);
+  d.group.forEach(g=>{
+    const p=familyTree.find(x=>x.id===g.id);if(!p)return;
+    p.x=parseFloat(g.el.style.left);
+    p.y=parseFloat(g.el.style.top);
+  });
   save();
   renderFamilyTree();
 }
@@ -2891,6 +2930,7 @@ function openTreePersonModal(id){
   _treeActivePersonId=id;
   const p=familyTree.find(x=>x.id===id);if(!p)return;
   document.getElementById('treePersonNameInp').value=p.name||'';
+  document.getElementById('treePersonBirthYearInp').value=p.birthYear||'';
   _renderTreeGenderButtons(p.gender||'');
   const addParentBtn=document.getElementById('treeAddParentBtn');
   if(addParentBtn)addParentBtn.style.display=(p.parentIds&&p.parentIds.length>=2)?'none':'block';
@@ -2910,6 +2950,13 @@ function saveTreePersonName(){
   const p=familyTree.find(x=>x.id===_treeActivePersonId);if(!p)return;
   const v=(document.getElementById('treePersonNameInp').value||'').trim();
   if(v)p.name=v;
+  save();renderFamilyTree();
+}
+function saveTreePersonBirthYear(){
+  const p=familyTree.find(x=>x.id===_treeActivePersonId);if(!p)return;
+  const raw=document.getElementById('treePersonBirthYearInp').value;
+  const v=raw?parseInt(raw):null;
+  p.birthYear=v&&!isNaN(v)?v:null;
   save();renderFamilyTree();
 }
 function deleteTreePerson(){
