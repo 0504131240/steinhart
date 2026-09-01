@@ -2759,41 +2759,70 @@ function _treeComputeLevels(people){
 // keeps most families visually under their parents without needing a full
 // graph-layout library. Fully automatic — nothing here is manually
 // draggable, so the layout is deterministic from the data alone.
+// Depth-first, bottom-up-centered layout: a parent unit (couple or single)
+// is positioned centered over the actual span of its own children's
+// subtrees, instead of children being positioned relative to wherever the
+// parent ended up. Left-to-right order is still exactly what
+// moveTreeSibling() controls (the current `familyTree` array order) — this
+// only changes X positions, not who ends up left/right of whom.
 function _treeLayout(people){
   const byId=new Map(people.map(p=>[p.id,p]));
   const level=_treeComputeLevels(people);
   const maxLevel=people.length?Math.max(...people.map(p=>level[p.id])):0;
   const pos={};
-  for(let li=0;li<=maxLevel;li++){
-    const levelPeople=people.filter(p=>level[p.id]===li);
-    const used=new Set(),units=[];
-    levelPeople.forEach(p=>{
-      if(used.has(p.id))return;
-      const spouseId=(p.spouseIds||[]).find(sid=>byId.has(sid)&&level[sid]===li&&!used.has(sid));
-      if(spouseId!=null){units.push({ids:[p.id,spouseId]});used.add(p.id);used.add(spouseId);}
-      else{units.push({ids:[p.id]});used.add(p.id);}
-    });
-    if(li>0){
-      units.forEach(u=>{
-        const parentXs=[];
-        u.ids.forEach(id=>{ (byId.get(id).parentIds||[]).forEach(pid=>{ if(pos[pid])parentXs.push(pos[pid].cx); }); });
-        u._key=parentXs.length?parentXs.reduce((a,b)=>a+b,0)/parentXs.length:Infinity;
-      });
-      // Siblings share identical parents, hence an identical _key above —
-      // JS's sort is stable, so ties keep their existing relative order in
-      // `familyTree`, which moveTreeSibling() lets you nudge left/right
-      // directly instead of relying on birth-year data that's often missing.
-      units.sort((a,b)=>a._key-b._key);
-    }
-    let x=0;
-    units.forEach(u=>{
-      u.ids.forEach((id,i)=>{
-        const ix=x+i*(TREE_NODE_W+TREE_COUPLE_GAP);
-        pos[id]={x:ix,y:li*TREE_LEVEL_H,cx:ix+TREE_NODE_W/2,cy:li*TREE_LEVEL_H+TREE_NODE_H/2,bottom:li*TREE_LEVEL_H+TREE_NODE_H};
-      });
-      x+=(u.ids.length===2?TREE_NODE_W*2+TREE_COUPLE_GAP:TREE_NODE_W)+TREE_H_GAP;
-    });
+  const usedInUnit=new Set();
+  function makeUnit(p){
+    if(usedInUnit.has(p.id))return null;
+    const spouseId=(p.spouseIds||[]).find(sid=>byId.has(sid)&&level[sid]===level[p.id]&&!usedInUnit.has(sid));
+    const ids=spouseId!=null?[p.id,spouseId]:[p.id];
+    ids.forEach(id=>usedInUnit.add(id));
+    return {ids,level:level[p.id]};
   }
+  // A person is a "child" of a unit when their parentIds, as a set, exactly
+  // match that unit's member ids.
+  const childrenByKey=new Map();
+  people.forEach(p=>{
+    if(!p.parentIds||!p.parentIds.length)return;
+    const key=[...p.parentIds].sort((a,b)=>a-b).join(',');
+    if(!childrenByKey.has(key))childrenByKey.set(key,[]);
+    childrenByKey.get(key).push(p);
+  });
+  const levelCursor={}; // next free x per level, so sibling subtrees never overlap
+  function layoutUnit(unit){
+    const key=[...unit.ids].sort((a,b)=>a-b).join(',');
+    const kids=childrenByKey.get(key)||[];
+    const width=unit.ids.length===2?TREE_NODE_W*2+TREE_COUPLE_GAP:TREE_NODE_W;
+    const minX=levelCursor[unit.level]||0;
+    let x=minX;
+    if(kids.length){
+      const seen=new Set(),kidUnits=[];
+      kids.forEach(k=>{
+        if(seen.has(k.id))return;
+        const ku=makeUnit(k);
+        if(!ku)return;
+        ku.ids.forEach(id=>seen.add(id));
+        kidUnits.push(ku);
+      });
+      const spans=kidUnits.map(layoutUnit);
+      if(spans.length){
+        const first=spans[0],last=spans[spans.length-1];
+        const center=((first.x+first.width/2)+(last.x+last.width/2))/2;
+        x=Math.max(minX,center-width/2);
+      }
+    }
+    levelCursor[unit.level]=x+width+TREE_H_GAP;
+    unit.ids.forEach((id,i)=>{
+      const ix=x+i*(TREE_NODE_W+TREE_COUPLE_GAP);
+      pos[id]={x:ix,y:unit.level*TREE_LEVEL_H,cx:ix+TREE_NODE_W/2,cy:unit.level*TREE_LEVEL_H+TREE_NODE_H/2,bottom:unit.level*TREE_LEVEL_H+TREE_NODE_H};
+    });
+    return {x,width};
+  }
+  // Roots (no parents) in current familyTree array order — covers multiple
+  // disconnected trees/standalone people too, lined up left to right.
+  people.filter(p=>level[p.id]===0).forEach(p=>{
+    const u=makeUnit(p);
+    if(u)layoutUnit(u);
+  });
   return {pos,maxLevel};
 }
 function renderFamilyTree(){
