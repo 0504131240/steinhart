@@ -2652,8 +2652,8 @@ function seedFamilyTreeIfEmpty(){
 }
 function _buildSeedFamilyTree(){
   const people=[];
-  const root1={id:nxtTreePerson++,name:'הורה 1',gender:'',parentIds:[],spouseIds:[],sourceFamId:null};
-  const root2={id:nxtTreePerson++,name:'הורה 2',gender:'',parentIds:[],spouseIds:[root1.id],sourceFamId:null};
+  const root1={id:nxtTreePerson++,name:'הורה 1',surname:'',gender:'',parentIds:[],spouseIds:[],sourceFamId:null};
+  const root2={id:nxtTreePerson++,name:'הורה 2',surname:'',gender:'',parentIds:[],spouseIds:[root1.id],sourceFamId:null};
   root1.spouseIds.push(root2.id);
   people.push(root1,root2);
   const rootIds=[root1.id,root2.id];
@@ -2667,18 +2667,18 @@ function _buildSeedFamilyTree(){
     // Tags every person seeded from this family with the same origin id, so
     // the tree can color-code each branch (see col() in renderFamilyTree)
     // and it's visually obvious who belongs to whom even in a wide tree.
-    const p1={id:nxtTreePerson++,name:(f.emailName||'הורה 1')+' '+surname,gender:bloodGender,parentIds:[...rootIds],spouseIds:[],sourceFamId:f.id};
+    const p1={id:nxtTreePerson++,name:f.emailName||'הורה 1',surname,gender:bloodGender,parentIds:[...rootIds],spouseIds:[],sourceFamId:f.id};
     people.push(p1);
     let parentIds=[p1.id];
     if(!f.parent2Removed){
-      const p2={id:nxtTreePerson++,name:(f.emailName2||'הורה 2')+' '+surname,gender:bloodGender==='boy'?'girl':'boy',parentIds:[],spouseIds:[p1.id],sourceFamId:f.id};
+      const p2={id:nxtTreePerson++,name:f.emailName2||'הורה 2',surname,gender:bloodGender==='boy'?'girl':'boy',parentIds:[],spouseIds:[p1.id],sourceFamId:f.id};
       p1.spouseIds.push(p2.id);
       people.push(p2);
       parentIds=[p1.id,p2.id];
     }
     (f.kids||[]).forEach(k=>{
       if(!k.name)return;
-      people.push({id:nxtTreePerson++,name:k.name,gender:k.gender==='boy'||k.gender==='girl'?k.gender:'',parentIds:[...parentIds],spouseIds:[],sourceFamId:f.id});
+      people.push({id:nxtTreePerson++,name:k.name,surname,gender:k.gender==='boy'||k.gender==='girl'?k.gender:'',parentIds:[...parentIds],spouseIds:[],sourceFamId:f.id});
     });
   });
   return people;
@@ -2893,6 +2893,7 @@ function renderFamilyTree(){
     return`<div onclick="openTreePersonModal(${p.id})" style="position:absolute;left:${pp.x}px;top:${pp.y}px;width:${TREE_NODE_W}px;height:${TREE_NODE_H}px;background:var(--surface);${borderStyle};border-radius:var(--r2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.08);padding:4px;box-sizing:border-box;text-align:center;gap:2px">
       <span style="font-size:18px;line-height:1">${ico}</span>
       <span style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(p.name||'ללא שם')}</span>
+      ${p.surname?`<span style="font-size:9px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(p.surname)}</span>`:''}
     </div>`;
   }).join('');
   canvas.style.width=maxX+'px';
@@ -2914,6 +2915,7 @@ function openTreePersonModal(id){
   _treeActivePersonId=id;
   const p=familyTree.find(x=>x.id===id);if(!p)return;
   document.getElementById('treePersonNameInp').value=p.name||'';
+  document.getElementById('treePersonSurnameInp').value=p.surname||'';
   _renderTreeGenderButtons(p.gender||'');
   const addParentBtn=document.getElementById('treeAddParentBtn');
   if(addParentBtn)addParentBtn.style.display=(p.parentIds&&p.parentIds.length>=2)?'none':'block';
@@ -2937,6 +2939,7 @@ function saveTreePersonName(){
   const p=familyTree.find(x=>x.id===_treeActivePersonId);if(!p)return;
   const v=(document.getElementById('treePersonNameInp').value||'').trim();
   if(v)p.name=v;
+  p.surname=(document.getElementById('treePersonSurnameInp').value||'').trim();
   save();renderFamilyTree();
 }
 // Swaps this person's position in `familyTree` with the sibling immediately
@@ -2984,6 +2987,10 @@ function openTreeAddModal(relation){
   const titles={root:'הוספת אדם',parent:'הוספת הורה',spouse:'הוספת בן/בת זוג',sibling:'הוספת אח/אחות',child:'הוספת ילד/ה'};
   document.getElementById('treeAddModalTitle').textContent=titles[relation]||'הוספת אדם';
   document.getElementById('treeAddNameInp').value='';
+  // Sibling/child naturally carry the same surname as the person you're
+  // adding from — prefill it so it's not typed again every time (still editable).
+  const base=familyTree.find(x=>x.id===_treeActivePersonId);
+  document.getElementById('treeAddSurnameInp').value=(relation==='sibling'||relation==='child')&&base?(base.surname||''):'';
   document.getElementById('treeAddModal').style.display='flex';
   setTimeout(()=>document.getElementById('treeAddNameInp')?.focus(),50);
 }
@@ -2993,11 +3000,12 @@ function closeTreeAddModal(){
 function confirmTreeAdd(){
   const name=(document.getElementById('treeAddNameInp').value||'').trim();
   if(!name)return;
+  const surname=(document.getElementById('treeAddSurnameInp').value||'').trim();
   const relation=_treeAddRelation;
   const base=familyTree.find(x=>x.id===_treeActivePersonId);
   // Firestore's setDoc throws on any `undefined` field value, so this must
   // never end up undefined (e.g. when base is the seeded root placeholder).
-  const newPerson={id:nxtTreePerson++,name,gender:'',parentIds:[],spouseIds:[],sourceFamId:(base&&base.sourceFamId!=null)?base.sourceFamId:null};
+  const newPerson={id:nxtTreePerson++,name,surname,gender:'',parentIds:[],spouseIds:[],sourceFamId:(base&&base.sourceFamId!=null)?base.sourceFamId:null};
   if(relation==='parent'){
     if(!base)return;
     if(!base.parentIds)base.parentIds=[];
