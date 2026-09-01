@@ -2814,7 +2814,23 @@ function _treeLayout(people){
         ku.ids.forEach(id=>seen.add(id));
         kidUnits.push(ku);
       });
-      const spans=kidUnits.map(layoutUnit);
+      const kidsSet=new Set(kids.map(k=>k.id));
+      const spans=kidUnits.map(ku=>{
+        const span=layoutUnit(ku);
+        const relevantIds=ku.ids.filter(id=>kidsSet.has(id));
+        if(relevantIds.length&&relevantIds.length<ku.ids.length){
+          // Only one member of this couple is actually our own kid — their
+          // spouse married in from a separately-tracked family with their
+          // own recorded parents. Center on just our own kid's slot, not
+          // the whole couple's width, so this parent unit doesn't visually
+          // land on top of the OTHER spouse's side (which would make it
+          // look like our kid's parents are actually the spouse's parents).
+          const xs=relevantIds.map(id=>pos[id].x);
+          const minRX=Math.min(...xs),maxRX=Math.max(...xs)+TREE_NODE_W;
+          return {x:minRX,width:maxRX-minRX};
+        }
+        return span;
+      });
       if(spans.length){
         const first=spans[0],last=spans[spans.length-1];
         const center=((first.x+first.width/2)+(last.x+last.width/2))/2;
