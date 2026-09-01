@@ -2896,6 +2896,7 @@ function renderFamilyTree(){
       return[...sp.parentIds].sort((a,b)=>a-b).join(',')!==groupKey;
     });
   }
+  const farConnections=[]; // collected first so overlapping ones can be staggered below
   groups.forEach((g,key)=>{
     const parentPoints=g.parentIds.map(pid=>pos[pid]).filter(Boolean);
     if(!parentPoints.length)return;
@@ -2916,7 +2917,26 @@ function renderFamilyTree(){
     }
     farKids.forEach(kid=>{
       const kp=pos[kid];
-      svgLines+=`<line x1="${dropX}" y1="${dropY}" x2="${kp.cx}" y2="${kp.y}" stroke="var(--text2)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+      farConnections.push({dropX,dropY,kx:kp.cx,ky:kp.y});
+    });
+  });
+  // Draw each "married in from a separately-tracked family" connector as a
+  // normal right-angle drop (matching the rest of the tree) instead of a
+  // diagonal — but stagger the horizontal segment's height per connection
+  // sharing the same source level, so two of these reaching across the
+  // tree never sit at the exact same height and read as one merged bus.
+  const farByLevel=new Map();
+  farConnections.forEach(c=>{
+    if(!farByLevel.has(c.dropY))farByLevel.set(c.dropY,[]);
+    farByLevel.get(c.dropY).push(c);
+  });
+  farByLevel.forEach(list=>{
+    list.forEach((c,i)=>{
+      const frac=Math.min(0.3+i*0.3,0.85);
+      const busY=c.dropY+(c.ky-c.dropY)*frac;
+      svgLines+=`<line x1="${c.dropX}" y1="${c.dropY}" x2="${c.dropX}" y2="${busY}" stroke="var(--border)" stroke-width="2"/>`;
+      svgLines+=`<line x1="${c.dropX}" y1="${busY}" x2="${c.kx}" y2="${busY}" stroke="var(--border)" stroke-width="2"/>`;
+      svgLines+=`<line x1="${c.kx}" y1="${busY}" x2="${c.kx}" y2="${c.ky}" stroke="var(--border)" stroke-width="2"/>`;
     });
   });
   const cards=people.map(p=>{
