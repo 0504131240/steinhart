@@ -2704,6 +2704,8 @@ function resetFamilyTree(){
 function openFamilyTreeOverlay(){
   seedFamilyTreeIfEmpty();
   document.getElementById('familyTreeOverlay').style.display='flex';
+  const wrap0=document.getElementById('treeCanvasWrap');
+  if(wrap0){wrap0.scrollTop=0;wrap0.scrollLeft=0;} // known state immediately, before the fit even runs
   renderFamilyTree();
   _fitTreeWhenReady(); // canvas needs a layout pass first for its size to be known
 }
@@ -2727,29 +2729,34 @@ function zoomTree(delta){
 }
 function fitTreeToScreen(){
   const c=document.getElementById('treeCanvas');if(!c)return;
-  const wrap=c.parentElement;if(!wrap||!c.offsetWidth||!c.offsetHeight)return;
+  // The page is RTL (<html dir="rtl">), where scrollLeft=0 shows the
+  // *right* edge of overflowing content in an RTL container — but the
+  // tree's own cards use physical left:Xpx starting at x=0. Rather than
+  // fight browser-inconsistent RTL scroll-sign conventions, the wrapper
+  // itself is forced dir="ltr" (see index.html/admin.html), so scrollLeft=0
+  // unambiguously means "leftmost" everywhere.
+  const wrap=document.getElementById('treeCanvasWrap')||c.parentElement;
+  if(!wrap||!c.offsetWidth||!c.offsetHeight)return;
   const fit=Math.min((wrap.clientWidth-48)/c.offsetWidth,(wrap.clientHeight-48)/c.offsetHeight,1);
   _treeZoom=Math.max(0.15,Math.round(fit*100)/100);
   applyTreeZoom();
-  wrap.scrollTop=0;
-  // The page is RTL (see <html dir="rtl">), where scrollLeft=0 shows the
-  // *right* edge of overflowing content, not the left — but the tree's own
-  // cards are positioned with physical left:Xpx starting at x=0. If the
-  // scaled tree still overflows the wrapper's width (a very large tree
-  // even at the minimum zoom), scrollLeft must go negative to reach that
-  // x=0 origin, or the tree opens scrolled off to the (visually) wrong
-  // side with nothing but blank canvas showing.
-  const overflowX=c.offsetWidth*_treeZoom-wrap.clientWidth;
-  wrap.scrollLeft=overflowX>0?-overflowX:0;
+  wrap.scrollTop=0;wrap.scrollLeft=0;
 }
 // Retries until the canvas has actually been laid out (offsetWidth/Height
 // read 0 right after a display:none→flex flip until the browser's next
 // layout pass) instead of a fixed delay that can silently miss on a
 // slower device, leaving the tree open scrolled to a stale/blank spot.
+// Once it succeeds, a couple of rAF follow-ups re-apply the same scroll
+// reset in case the browser re-anchors scroll position on a later paint
+// (seen on some mobile browsers right after a large layout change).
 function _fitTreeWhenReady(attempts){
   attempts=attempts||0;
   const c=document.getElementById('treeCanvas');
-  if(c&&c.offsetWidth&&c.offsetHeight){fitTreeToScreen();return;}
+  if(c&&c.offsetWidth&&c.offsetHeight){
+    fitTreeToScreen();
+    requestAnimationFrame(()=>{fitTreeToScreen();requestAnimationFrame(fitTreeToScreen);});
+    return;
+  }
   if(attempts<20)setTimeout(()=>_fitTreeWhenReady(attempts+1),50);
 }
 // Assigns each person a generation level via BFS from roots (no parents),
