@@ -2699,13 +2699,13 @@ function resetFamilyTree(){
   familyTree=_buildSeedFamilyTree();
   save();
   renderFamilyTree();
-  setTimeout(fitTreeToScreen,50);
+  _fitTreeWhenReady();
 }
 function openFamilyTreeOverlay(){
   seedFamilyTreeIfEmpty();
   document.getElementById('familyTreeOverlay').style.display='flex';
   renderFamilyTree();
-  setTimeout(fitTreeToScreen,50); // canvas needs a layout pass first for its size to be known
+  _fitTreeWhenReady(); // canvas needs a layout pass first for its size to be known
 }
 function closeFamilyTreeOverlay(){
   document.getElementById('familyTreeOverlay').style.display='none';
@@ -2731,7 +2731,26 @@ function fitTreeToScreen(){
   const fit=Math.min((wrap.clientWidth-48)/c.offsetWidth,(wrap.clientHeight-48)/c.offsetHeight,1);
   _treeZoom=Math.max(0.15,Math.round(fit*100)/100);
   applyTreeZoom();
-  wrap.scrollTop=0;wrap.scrollLeft=0;
+  wrap.scrollTop=0;
+  // The page is RTL (see <html dir="rtl">), where scrollLeft=0 shows the
+  // *right* edge of overflowing content, not the left — but the tree's own
+  // cards are positioned with physical left:Xpx starting at x=0. If the
+  // scaled tree still overflows the wrapper's width (a very large tree
+  // even at the minimum zoom), scrollLeft must go negative to reach that
+  // x=0 origin, or the tree opens scrolled off to the (visually) wrong
+  // side with nothing but blank canvas showing.
+  const overflowX=c.offsetWidth*_treeZoom-wrap.clientWidth;
+  wrap.scrollLeft=overflowX>0?-overflowX:0;
+}
+// Retries until the canvas has actually been laid out (offsetWidth/Height
+// read 0 right after a display:none→flex flip until the browser's next
+// layout pass) instead of a fixed delay that can silently miss on a
+// slower device, leaving the tree open scrolled to a stale/blank spot.
+function _fitTreeWhenReady(attempts){
+  attempts=attempts||0;
+  const c=document.getElementById('treeCanvas');
+  if(c&&c.offsetWidth&&c.offsetHeight){fitTreeToScreen();return;}
+  if(attempts<20)setTimeout(()=>_fitTreeWhenReady(attempts+1),50);
 }
 // Assigns each person a generation level via BFS from roots (no parents),
 // then aligns spouses to the same (max) level so a married-in partner sits
@@ -3110,7 +3129,7 @@ function moveTreeSibling(dir){
   if(swapIdx==null)return;
   [familyTree[idx],familyTree[swapIdx]]=[familyTree[swapIdx],familyTree[idx]];
   save();renderFamilyTree();
-  setTimeout(fitTreeToScreen,50); // layout shifted — keep the whole tree in view
+  _fitTreeWhenReady(); // layout shifted — keep the whole tree in view
 }
 function deleteTreePerson(){
   const p=familyTree.find(x=>x.id===_treeActivePersonId);if(!p)return;
@@ -3123,7 +3142,7 @@ function deleteTreePerson(){
   });
   closeTreePersonModal();
   save();renderFamilyTree();
-  setTimeout(fitTreeToScreen,50); // layout shifted — keep the whole tree in view
+  _fitTreeWhenReady(); // layout shifted — keep the whole tree in view
 }
 function addRootTreePerson(){
   _treeActivePersonId=null;
@@ -3186,7 +3205,7 @@ function confirmTreeAdd(){
   closeTreeAddModal();
   closeTreePersonModal();
   save();renderFamilyTree();
-  setTimeout(fitTreeToScreen,50); // layout shifted — keep the whole tree in view
+  _fitTreeWhenReady(); // layout shifted — keep the whole tree in view
 }
 
 function openFundDetail(){
