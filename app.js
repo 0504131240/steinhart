@@ -2837,23 +2837,20 @@ function _treeLayout(people){
         }
         return span;
       });
-      if(spans.length){
-        const first=spans[0],last=spans[spans.length-1];
-        const center=((first.x+first.width/2)+(last.x+last.width/2))/2;
+      // A kid claimed by a *different* parent unit's branch (their spouse
+      // also has their own recorded parents, and that branch won the race
+      // to position them) still belongs to this family — fold their actual
+      // position into the centering too, so this unit doesn't drift away
+      // from part of its own children just because it "lost" one of them.
+      const elsewhere=kids.filter(k=>claimedBy[k.id]!==key).map(k=>pos[k.id]).filter(Boolean);
+      const ranges=[
+        ...spans.map(s=>({min:s.x,max:s.x+s.width})),
+        ...elsewhere.map(pp=>({min:pp.x,max:pp.x+TREE_NODE_W}))
+      ];
+      if(ranges.length){
+        const minAll=Math.min(...ranges.map(r=>r.min)),maxAll=Math.max(...ranges.map(r=>r.max));
+        const center=(minAll+maxAll)/2;
         x=Math.max(minX,center-width/2);
-      } else {
-        // Every recorded kid here was already claimed as a spouse inside a
-        // *different* parent unit's branch (both sides of a couple have
-        // their own separately-recorded parents) — center over wherever
-        // that kid actually ended up instead of leaving this unit at the
-        // default cursor spot, so its connector drops straight down onto
-        // the real position instead of stretching across the whole tree.
-        const already=kids.map(k=>pos[k.id]).filter(Boolean);
-        if(already.length){
-          const cxs=already.map(pp=>pp.cx);
-          const center=(Math.min(...cxs)+Math.max(...cxs))/2;
-          x=Math.max(minX,center-width/2);
-        }
       }
     }
     levelCursor[unit.level]=x+width+TREE_H_GAP;
