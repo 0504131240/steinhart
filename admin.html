@@ -432,15 +432,24 @@
       <button id="treeGenderBoy" onclick="setTreePersonGender('boy')" style="padding:5px 10px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-family:var(--font);cursor:pointer">👦 זכר</button>
       <button id="treeGenderGirl" onclick="setTreePersonGender('girl')" style="padding:5px 10px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-family:var(--font);cursor:pointer">👧 נקבה</button>
     </div>
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">
+      <input type="text" id="treePersonBirthYearInp" placeholder="שנת לידה" inputmode="numeric" style="flex:1;min-width:0;border:1.5px solid var(--border);border-radius:var(--r2);padding:8px 10px;font-size:12px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;text-align:center" onchange="saveTreePersonName()">
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);white-space:nowrap">
+        <input type="checkbox" id="treePersonDeceasedChk" onchange="toggleTreePersonDeceased()"> נפטר/ה
+      </label>
+      <input type="text" id="treePersonDeathYearInp" placeholder="שנת פטירה" inputmode="numeric" style="flex:1;min-width:0;border:1.5px solid var(--border);border-radius:var(--r2);padding:8px 10px;font-size:12px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;text-align:center;display:none" onchange="saveTreePersonName()">
+    </div>
     <div style="display:flex;gap:6px;justify-content:center;margin-bottom:16px">
       <button onclick="moveTreeSibling(1)" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-family:var(--font);cursor:pointer">⟶ ימינה</button>
       <button onclick="moveTreeSibling(-1)" style="padding:6px 14px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:13px;font-family:var(--font);cursor:pointer">⟵ שמאלה</button>
     </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <button id="treeAddParentBtn" onclick="openTreeAddModal('parent')" style="padding:12px 6px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:20px">⬆️</span>הוסף הורה</button>
+      <button id="treeAddSpouseBtn" onclick="openTreeAddModal('spouse')" style="padding:12px 6px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:20px">💍</span>הוסף בן/בת זוג</button>
+      <button onclick="openTreeAddModal('sibling')" style="padding:12px 6px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:20px">👫</span>הוסף אח/אחות</button>
+      <button onclick="openTreeAddModal('child')" style="padding:12px 6px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:20px">⬇️</span>הוסף ילד/ה</button>
+    </div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button id="treeAddParentBtn" onclick="openTreeAddModal('parent')" style="padding:10px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">⬆️ הוסף הורה</button>
-      <button id="treeAddSpouseBtn" onclick="openTreeAddModal('spouse')" style="padding:10px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">💍 הוסף בן/בת זוג</button>
-      <button onclick="openTreeAddModal('sibling')" style="padding:10px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">👫 הוסף אח/אחות</button>
-      <button onclick="openTreeAddModal('child')" style="padding:10px;border-radius:var(--r2);border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">⬇️ הוסף ילד/ה</button>
       <button onclick="deleteTreePerson()" style="padding:10px;border-radius:var(--r2);border:1.5px solid #c33;background:transparent;color:#c33;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">🗑 מחק אדם</button>
       <button onclick="closeTreePersonModal()" style="padding:10px;border-radius:var(--r2);border:none;background:var(--surface2);color:var(--text2);font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">סגור</button>
     </div>

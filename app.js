@@ -700,7 +700,12 @@ async function load(){
     // undefined sourceFamId — Firestore's setDoc throws on that, silently
     // breaking every save from then on, so backfill it to null here.
     let _treeMigrated=false;
-    familyTree.forEach(p=>{ if(p.sourceFamId===undefined){p.sourceFamId=null;_treeMigrated=true;} });
+    familyTree.forEach(p=>{
+      if(p.sourceFamId===undefined){p.sourceFamId=null;_treeMigrated=true;}
+      if(p.birthYear===undefined){p.birthYear='';_treeMigrated=true;}
+      if(p.deathYear===undefined){p.deathYear='';_treeMigrated=true;}
+      if(p.deceased===undefined){p.deceased=false;_treeMigrated=true;}
+    });
     if(_kidsMigrated||_bdaysCleared||_treeMigrated)save();
     render();setTimeout(handleHash,100);
     if(!_isAdminPage()){
@@ -2636,7 +2641,7 @@ function closeFamiliesHomeOverlay(){
 // above) — seeded once from the current families/kids, then edited freely by
 // anyone (add parents/siblings/spouses/children, rename, delete) since a
 // genealogical tree outgrows what the payments app's family units model.
-const TREE_NODE_W=112,TREE_NODE_H=64,TREE_H_GAP=22,TREE_COUPLE_GAP=14,TREE_LEVEL_H=150;
+const TREE_NODE_W=112,TREE_NODE_H=80,TREE_H_GAP=22,TREE_COUPLE_GAP=14,TREE_LEVEL_H=160;
 let _treeActivePersonId=null,_treeAddRelation=null;
 
 // The families already in the app are treated as siblings of one another —
@@ -2681,6 +2686,8 @@ function _buildSeedFamilyTree(){
       people.push({id:nxtTreePerson++,name:k.name,surname,gender:k.gender==='boy'||k.gender==='girl'?k.gender:'',parentIds:[...parentIds],spouseIds:[],sourceFamId:f.id});
     });
   });
+  // Never leave these undefined (Firestore's setDoc throws on that).
+  people.forEach(p=>{p.birthYear='';p.deathYear='';p.deceased=false;});
   return people;
 }
 // Rebuilds the tree from scratch using the current families/kids data —
@@ -3008,16 +3015,24 @@ function renderFamilyTree(){
   });
   const cards=people.map(p=>{
     const pp=pos[p.id];if(!pp)return'';
-    const ico=p.gender==='boy'?'👦':p.gender==='girl'?'👧':'👤';
-    // Every person seeded from the same original family (see sourceFamId in
-    // _buildSeedFamilyTree) shares the same accent color — makes it obvious
-    // at a glance which branch/family a card belongs to in a wide tree.
+    // Gender-coded border (teal/rose), matching the standard genealogy-site
+    // convention — a small bottom accent still shows the original seeded
+    // family branch (sourceFamId) when known, without competing with it.
+    const genderColor=p.gender==='boy'?'#2a9d8f':p.gender==='girl'?'#e56399':'var(--border)';
     const branchColor=p.sourceFamId!=null?col(p.sourceFamId).c:null;
-    const borderStyle=branchColor?`border:1.5px solid var(--border);border-top:4px solid ${branchColor}`:'border:1.5px solid var(--border)';
-    return`<div onclick="openTreePersonModal(${p.id})" style="position:absolute;left:${pp.x}px;top:${pp.y}px;width:${TREE_NODE_W}px;height:${TREE_NODE_H}px;background:var(--surface);${borderStyle};border-radius:var(--r2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.08);padding:4px;box-sizing:border-box;text-align:center;gap:2px">
-      <span style="font-size:18px;line-height:1">${ico}</span>
+    const borderStyle=`border:1.5px solid ${genderColor}`+(branchColor?`;border-bottom:3px solid ${branchColor}`:'');
+    const avatarBg=p.gender==='boy'?'#e8f4f3':p.gender==='girl'?'#fbe9f0':'var(--surface2)';
+    const avatarFg=p.gender==='boy'?'#2a9d8f':p.gender==='girl'?'#e56399':'var(--text2)';
+    const deceased=p.deceased?`<span style="position:absolute;top:2px;left:2px;font-size:9px">🕯️</span>`:'';
+    const years=(p.birthYear||p.deathYear)?`<span style="font-size:8px;color:var(--text2)">${esc(p.birthYear||'')}${p.deceased||p.deathYear?'–'+esc(p.deathYear||''):''}</span>`:'';
+    return`<div onclick="openTreePersonModal(${p.id})" style="position:absolute;left:${pp.x}px;top:${pp.y}px;width:${TREE_NODE_W}px;height:${TREE_NODE_H}px;background:var(--surface);${borderStyle};border-radius:var(--r2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.08);padding:4px;box-sizing:border-box;text-align:center;gap:1px">
+      ${deceased}
+      <span style="width:24px;height:24px;border-radius:50%;background:${avatarBg};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="${avatarFg}"><circle cx="12" cy="8" r="4"/><path d="M12 14c-5 0-8 2.5-8 6v1h16v-1c0-3.5-3-6-8-6z"/></svg>
+      </span>
       <span style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(p.name||'ללא שם')}</span>
       ${p.surname?`<span style="font-size:9px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(p.surname)}</span>`:''}
+      ${years}
     </div>`;
   }).join('');
   canvas.style.width=maxX+'px';
@@ -3040,6 +3055,10 @@ function openTreePersonModal(id){
   const p=familyTree.find(x=>x.id===id);if(!p)return;
   document.getElementById('treePersonNameInp').value=p.name||'';
   document.getElementById('treePersonSurnameInp').value=p.surname||'';
+  document.getElementById('treePersonBirthYearInp').value=p.birthYear||'';
+  document.getElementById('treePersonDeceasedChk').checked=!!p.deceased;
+  document.getElementById('treePersonDeathYearInp').value=p.deathYear||'';
+  document.getElementById('treePersonDeathYearInp').style.display=p.deceased?'block':'none';
   _renderTreeGenderButtons(p.gender||'');
   const addParentBtn=document.getElementById('treeAddParentBtn');
   if(addParentBtn)addParentBtn.style.display=(p.parentIds&&p.parentIds.length>=2)?'none':'block';
@@ -3064,6 +3083,14 @@ function saveTreePersonName(){
   const v=(document.getElementById('treePersonNameInp').value||'').trim();
   if(v)p.name=v;
   p.surname=(document.getElementById('treePersonSurnameInp').value||'').trim();
+  p.birthYear=(document.getElementById('treePersonBirthYearInp').value||'').trim();
+  p.deathYear=(document.getElementById('treePersonDeathYearInp').value||'').trim();
+  save();renderFamilyTree();
+}
+function toggleTreePersonDeceased(){
+  const p=familyTree.find(x=>x.id===_treeActivePersonId);if(!p)return;
+  p.deceased=document.getElementById('treePersonDeceasedChk').checked;
+  document.getElementById('treePersonDeathYearInp').style.display=p.deceased?'block':'none';
   save();renderFamilyTree();
 }
 // Swaps this person's position in `familyTree` with the sibling immediately
@@ -3129,7 +3156,7 @@ function confirmTreeAdd(){
   const base=familyTree.find(x=>x.id===_treeActivePersonId);
   // Firestore's setDoc throws on any `undefined` field value, so this must
   // never end up undefined (e.g. when base is the seeded root placeholder).
-  const newPerson={id:nxtTreePerson++,name,surname,gender:'',parentIds:[],spouseIds:[],sourceFamId:(base&&base.sourceFamId!=null)?base.sourceFamId:null};
+  const newPerson={id:nxtTreePerson++,name,surname,gender:'',parentIds:[],spouseIds:[],sourceFamId:(base&&base.sourceFamId!=null)?base.sourceFamId:null,birthYear:'',deathYear:'',deceased:false};
   if(relation==='parent'){
     if(!base)return;
     if(!base.parentIds)base.parentIds=[];
