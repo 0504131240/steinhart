@@ -2860,10 +2860,69 @@ function _treeLayout(people){
     });
     return {x,width};
   }
-  // Roots (no parents) in current familyTree array order — covers multiple
-  // disconnected trees/standalone people too, lined up left to right.
-  people.filter(p=>level[p.id]===0).forEach(p=>{
-    const u=makeUnit(p);
+  // Roots (no parents) are normally laid out left to right in familyTree
+  // array order. But when root A's only recorded child marries root B's
+  // only recorded child, that marriage bridges two separately-documented
+  // families — like a real genealogy chart, A and B should sit right next
+  // to each other (on the correct side of their kids' couple) regardless
+  // of where they happened to be in the array, otherwise one side's own
+  // parents can end up nowhere near where their child actually landed.
+  const rootPeople=people.filter(p=>level[p.id]===0);
+  const rootIdSet=new Set(rootPeople.map(p=>p.id));
+  const previewUsed=new Set();
+  const rootUnits=[];
+  rootPeople.forEach(p=>{
+    if(previewUsed.has(p.id))return;
+    const spouseId=(p.spouseIds||[]).find(sid=>rootIdSet.has(sid)&&!previewUsed.has(sid));
+    let ids=spouseId!=null?[p.id,spouseId]:[p.id];
+    if(ids.length===2){
+      const male=id=>byId.get(id).gender==='boy'?1:0;
+      ids=ids.slice().sort((a,b)=>male(a)-male(b));
+    }
+    ids.forEach(id=>previewUsed.add(id));
+    rootUnits.push(ids);
+  });
+  const unitKey=ids=>[...ids].sort((a,b)=>a-b).join(',');
+  const rootUnitByKey=new Map(rootUnits.map(u=>[unitKey(u),u]));
+  const linkPairs=new Map(); // unit key -> {leftKey,rightKey} for a bridging marriage
+  rootUnits.forEach(u=>{
+    const key=unitKey(u);
+    const kids=childrenByKey.get(key)||[];
+    // A root unit can have several kids (siblings) — any one of them
+    // marrying into another documented root family is enough to bridge
+    // the two, regardless of how many other (unmarried, or married-in-
+    // with-no-tracked-parents) siblings it also has.
+    kids.forEach(kid=>{
+    const spouseId=(kid.spouseIds||[]).find(sid=>byId.has(sid));
+    if(spouseId==null)return;
+    const spouse=byId.get(spouseId);
+    if(!spouse||!spouse.parentIds||!spouse.parentIds.length)return;
+    const spouseParentKey=[...spouse.parentIds].sort((a,b)=>a-b).join(',');
+    if(spouseParentKey===key||!rootUnitByKey.has(spouseParentKey))return;
+    const kidIsMale=kid.gender==='boy';
+    const leftKey=kidIsMale?spouseParentKey:key;
+    const rightKey=kidIsMale?key:spouseParentKey;
+    const pair={leftKey,rightKey};
+    linkPairs.set(leftKey,pair);
+    linkPairs.set(rightKey,pair);
+    });
+  });
+  const orderedRoots=[];
+  const placedRoot=new Set();
+  rootUnits.forEach(u=>{
+    const key=unitKey(u);
+    if(placedRoot.has(key))return;
+    const pair=linkPairs.get(key);
+    if(pair){
+      const leftUnit=rootUnitByKey.get(pair.leftKey),rightUnit=rootUnitByKey.get(pair.rightKey);
+      if(leftUnit&&!placedRoot.has(pair.leftKey)){orderedRoots.push(leftUnit);placedRoot.add(pair.leftKey);}
+      if(rightUnit&&!placedRoot.has(pair.rightKey)){orderedRoots.push(rightUnit);placedRoot.add(pair.rightKey);}
+    } else {
+      orderedRoots.push(u);placedRoot.add(key);
+    }
+  });
+  orderedRoots.forEach(ids=>{
+    const u=makeUnit(byId.get(ids[0]));
     if(u)layoutUnit(u);
   });
   return {pos,maxLevel,claimedBy};
