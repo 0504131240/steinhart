@@ -1500,6 +1500,16 @@ function toHebrewYear(hy){
 function _hebMonthEq(a,b){
   return a===b||(!!a&&!!b&&a.startsWith('אדר')&&b.startsWith('אדר'));
 }
+// A calendar day's background is picked by occasion priority (birthday >
+// yahrzeit > anniversary) when more than one kind lands on the same day —
+// same precedence as the day's emoji/label already implied, just now also
+// reflected in which "has-*" class colors the square.
+function _calDayOccClass(occOnDay){
+  if(!occOnDay.length)return'';
+  if(occOnDay.some(b=>b.kind!=='yahrzeit'&&b.kind!=='anniversary'))return'has-bday';
+  if(occOnDay.some(b=>b.kind==='yahrzeit'))return'has-yahrzeit';
+  return'has-anniv';
+}
 function hebrewToGregorian(hebYear,hebMonthName,hebDay){
   if(!hebYear||!hebMonthName||!hebDay)return null;
   const dayFmt=new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{day:'numeric'});
@@ -1574,7 +1584,7 @@ function renderCalendar(){
       const bdayOnDay=_allBdays.filter(b=>b.hebDay===hebDayNumInt&&_hebMonthEq(b.hebMonth,hebMonthName));
       if(bdayOnDay.length)bdayByDate[ds]=bdayOnDay;
       const hasEv=evOnDay.length>0;const hasBday=bdayOnDay.length>0;
-      const cls=['fh-cal-day',isToday?'today':'',isSel?'sel':'',hasEv?'has-ev':(hasBday?'has-bday':'')].filter(Boolean).join(' ');
+      const cls=['fh-cal-day',isToday?'today':'',isSel?'sel':'',hasEv?'has-ev':_calDayOccClass(bdayOnDay)].filter(Boolean).join(' ');
       html+=`<div class="${cls}" onclick="selectCalDay('${ds}')">
         <span style="font-size:10px;line-height:1">${label}</span>
         ${hasEv?`<span class="fh-cal-day-ev">${evOnDay.map(c=>c.title.slice(0,5)).join(',')}</span>`:''}
@@ -1599,7 +1609,7 @@ function renderCalendar(){
       const bdayOnDay=_allBdays.filter(b=>b.hebDay===hebDayNumInt&&_hebMonthEq(b.hebMonth,hebMonthName));
       if(bdayOnDay.length)bdayByDate[ds]=bdayOnDay;
       const hasEv=evOnDay.length>0;const hasBday=bdayOnDay.length>0;
-      const cls=['fh-cal-day',isToday?'today':'',isSel?'sel':'',hasEv?'has-ev':(hasBday?'has-bday':'')].filter(Boolean).join(' ');
+      const cls=['fh-cal-day',isToday?'today':'',isSel?'sel':'',hasEv?'has-ev':_calDayOccClass(bdayOnDay)].filter(Boolean).join(' ');
       html+=`<div class="${cls}" onclick="selectCalDay('${ds}')">
         <span style="font-size:12px;line-height:1">${d}</span>
         ${hasEv?`<span class="fh-cal-day-ev">${evOnDay.map(c=>c.title.slice(0,5)).join(',')}</span>`:''}
