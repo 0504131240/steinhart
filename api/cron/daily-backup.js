@@ -15,7 +15,7 @@
 // sole source of that reminder. Doing all three here, gated by
 // day-of-week where relevant, is the only way that's actually reliable on
 // this plan.
-const { getDb, getMessaging, dedupeTokenDocs, notifPrefAllows } = require('../_lib/firebaseAdmin');
+const { getDb, getMessaging, dedupeTokenDocs, notifPrefAllows, isShabbatNow } = require('../_lib/firebaseAdmin');
 const { allBirthdays, ageLabel, bmLabel } = require('../_lib/birthdayCalc');
 const { sendWeeklyDebtReminders } = require('./weekly-debt-reminder');
 
@@ -109,6 +109,11 @@ module.exports = async (req, res) => {
     res.status(401).json({ error: 'unauthorized' });
     return;
   }
+
+  // Nothing runs on Shabbat — no backup, no reminders, no debt email. The
+  // schedule (vercel.json) fires daily at 6:00 UTC, which lands Saturday
+  // morning in Israel; this is what actually skips that run.
+  if (isShabbatNow()) { res.status(200).json({ ok: true, skipped: 'shabbat' }); return; }
 
   const db = getDb();
   const snap = await db.doc('appData/familyPayments').get();
