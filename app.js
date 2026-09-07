@@ -3068,6 +3068,12 @@ function renderFamilyTree(){
     const avatarFg=p.gender==='boy'?'#2a9d8f':p.gender==='girl'?'#e56399':'var(--text2)';
     const deceased=p.deceased?`<span style="position:absolute;top:2px;left:2px;font-size:9px">🕯️</span>`:'';
     const years=(p.birthYear||p.deathYear)?`<span style="font-size:8px;color:var(--text2)">${esc(p.birthYear||'')}${p.deceased||p.deathYear?'–'+esc(p.deathYear||''):''}</span>`:'';
+    // A small "+" below the card is a quick, always-visible shortcut straight
+    // into this person's add-relation options — the same destination as
+    // tapping the card itself (openTreePersonModal), just discoverable
+    // without needing to open the card first (matches the reference site's
+    // per-card "+" convention).
+    const plusBtn=`<div onclick="openTreePersonModal(${p.id})" title="הוסף קרוב" style="position:absolute;left:${pp.cx-9}px;top:${pp.bottom+3}px;width:18px;height:18px;border-radius:50%;background:var(--blue-mid);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;line-height:1;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.3);z-index:2">+</div>`;
     return`<div onclick="openTreePersonModal(${p.id})" style="position:absolute;left:${pp.x}px;top:${pp.y}px;width:${TREE_NODE_W}px;height:${TREE_NODE_H}px;background:var(--surface);${borderStyle};border-radius:var(--r2);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.08);padding:4px;box-sizing:border-box;text-align:center;gap:1px">
       ${deceased}
       <span style="width:24px;height:24px;border-radius:50%;background:${avatarBg};display:flex;align-items:center;justify-content:center;flex-shrink:0">
@@ -3076,7 +3082,7 @@ function renderFamilyTree(){
       <span style="font-size:11px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(p.name||'ללא שם')}</span>
       ${p.surname?`<span style="font-size:9px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(p.surname)}</span>`:''}
       ${years}
-    </div>`;
+    </div>${plusBtn}`;
   }).join('');
   canvas.style.width=maxX+'px';
   canvas.style.height=totalH+'px';
