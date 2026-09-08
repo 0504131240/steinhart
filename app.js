@@ -306,7 +306,8 @@ function getPaymentSettings(){
     bank:localStorage.getItem('payBankName')||'',
     branch:localStorage.getItem('payBranch')||'',
     account:localStorage.getItem('payAccount')||'',
-    bit:localStorage.getItem('payBitLink')||''
+    bit:localStorage.getItem('payBitLink')||'',
+    paybox:localStorage.getItem('payPayboxLink')||''
   };
 }
 async function loadPaymentSettings(){
@@ -320,10 +321,11 @@ async function loadPaymentSettings(){
       if(d.branch)  localStorage.setItem('payBranch',d.branch);
       if(d.account) localStorage.setItem('payAccount',d.account);
       if(d.bit)     localStorage.setItem('payBitLink',d.bit);
+      if(d.paybox)  localStorage.setItem('payPayboxLink',d.paybox);
     }
   }catch(e){}
-  const ids=['payTreasurerName','payBankName','payBranch','payAccount','payBitLink'];
-  const keys=['payTreasurerName','payBankName','payBranch','payAccount','payBitLink'];
+  const ids=['payTreasurerName','payBankName','payBranch','payAccount','payBitLink','payPayboxLink'];
+  const keys=['payTreasurerName','payBankName','payBranch','payAccount','payBitLink','payPayboxLink'];
   ids.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.value=localStorage.getItem(keys[i])||'';});
 }
 async function savePaymentSettings(){
@@ -332,13 +334,15 @@ async function savePaymentSettings(){
     bank:(document.getElementById('payBankName').value||'').trim(),
     branch:(document.getElementById('payBranch').value||'').trim(),
     account:(document.getElementById('payAccount').value||'').trim(),
-    bit:(document.getElementById('payBitLink').value||'').trim()
+    bit:(document.getElementById('payBitLink').value||'').trim(),
+    paybox:(document.getElementById('payPayboxLink').value||'').trim()
   };
   localStorage.setItem('payTreasurerName',p.name);
   localStorage.setItem('payBankName',p.bank);
   localStorage.setItem('payBranch',p.branch);
   localStorage.setItem('payAccount',p.account);
   localStorage.setItem('payBitLink',p.bit);
+  localStorage.setItem('payPayboxLink',p.paybox);
   try{
     const fb=await fbInit();
     await fb.setDoc(fb.doc(fb.db,'settings','payment'),p);
@@ -350,8 +354,9 @@ function _paymentBlock(owe,evName,evId,famId){
   const p=getPaymentSettings();
   const hasBank=p.bank&&p.account;
   const hasBit=p.bit;
+  const hasPaybox=p.paybox;
   let html='';
-  if(hasBank||hasBit){
+  if(hasBank||hasBit||hasPaybox){
     html+=`<div style="margin-top:14px;padding:12px 14px;background:#F0FDF4;border-radius:8px;border:1px solid #BBF7D0">`;
     html+=`<div style="font-weight:700;font-size:13px;color:#15803D;margin-bottom:8px">💸 לתשלום:</div>`;
     if(hasBank){
@@ -364,6 +369,11 @@ function _paymentBlock(owe,evName,evId,famId){
     if(hasBit){
       html+=`<div style="margin-top:${hasBank?10:0}px">`;
       html+=`<a href="${_esc(p.bit)}" style="display:inline-block;background:#1A3C40;color:#3BFFF0;text-decoration:none;padding:10px 22px;border-radius:20px;font-size:14px;font-weight:700">💙 שלם בביט · ₪${owe.toLocaleString()}</a>`;
+      html+=`</div>`;
+    }
+    if(hasPaybox){
+      html+=`<div style="margin-top:${(hasBank||hasBit)?10:0}px">`;
+      html+=`<a href="${_esc(p.paybox)}" style="display:inline-block;background:#5B2A86;color:#fff;text-decoration:none;padding:10px 22px;border-radius:20px;font-size:14px;font-weight:700">🅿️ שלם בפייבוקס · ₪${owe.toLocaleString()}</a>`;
       html+=`</div>`;
     }
     html+=`</div>`;
