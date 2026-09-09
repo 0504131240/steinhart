@@ -3139,9 +3139,6 @@ function _treeLayout(people){
         const pkey=[...p.parentIds].sort((a,b)=>a-b).join(',');
         return [...new Set((childrenByKey.get(pkey)||[]).map(s=>unitOf[s.id]).filter(su=>su&&su.level===l))];
       };
-      // RTL sibling order: first recorded stays rightmost, so a newly added
-      // sibling appears to the LEFT of the ones before it.
-      const rtl=arr=>arr.slice().sort((a,b)=>unitMinIndex(b)-unitMinIndex(a));
       // Sorts sibling UNITS by their BLOOD-relative member's own array
       // index (not unitMinIndex, which takes the min of both couple
       // partners) — a married-in spouse's own recorded position in
@@ -3149,7 +3146,8 @@ function _treeLayout(people){
       // the partner's OWN siblings, and letting it leak in scrambles the
       // sibling order unpredictably depending on unrelated data-entry
       // order. `pkey` is the shared parentIds key these units' blood
-      // members all share.
+      // members all share. RTL: first recorded stays rightmost, so a newly
+      // added sibling appears to the LEFT of the ones before it.
       const siblingRtl=(arr,pkey)=>arr.slice().sort((a,b)=>{
         const keyOf=m=>{
           const bloodId=m.ids.find(id=>_treeParentKey(byId.get(id).parentIds)===pkey);
@@ -3157,43 +3155,47 @@ function _treeLayout(people){
         };
         return keyOf(b)-keyOf(a);
       });
-      const parented=u.ids.filter(id=>byId.get(id).parentIds&&byId.get(id).parentIds.length);
-      const hasSibs=id=>sibUnitsOf(id).filter(su=>su!==u).length>0;
-      // Extending leftwards is right for a spouse standing on the LEFT of a
-      // couple — their brothers and sisters end up on their own side. For a
-      // spouse on the RIGHT it puts them on their partner's side instead,
-      // which then drags their parents across their in-laws' and crosses
-      // both families' lines up the tree. So that one case extends the
-      // other way: rightwards, away from the partner.
-      // Only for a couple BRIDGING two recorded families: that's where a
-      // sibling landing on the partner's side actually crosses the other
-      // family's line. When the partner has no recorded parents there is no
-      // other family to cross, so the plain order stands.
-      const rightMember=u.ids.length>1?u.ids[1]:null;
-      // Applies regardless of how many siblings the right-side (male) member
-      // has — the father's/groom's side of a marriage should never flip to
-      // the left just because he happens to have 3+ siblings instead of 1-2.
-      const rightSibCount=rightMember!=null?sibUnitsOf(rightMember).filter(su=>su!==u).length:0;
-      const rightSideSibs=rightMember!=null&&parented.length>1
-        &&parented.includes(rightMember)&&rightSibCount>0
-        &&!hasSibs(u.ids[0]);
+      // Resolve THIS unit's own sibling group (if any) via whichever of its
+      // members has recorded parents — entry-point independent, so it
+      // resolves to the exact same group and decision regardless of WHICH
+      // unit in the group happened to be encountered first while iterating
+      // the row (unlike computing this off of "u" alone, which silently
+      // changed behavior — and could break the "keep the married sibling's
+      // family on their own side" rule entirely — depending on iteration
+      // order).
+      const bloodMember=u.ids.find(id=>byId.get(id).parentIds&&byId.get(id).parentIds.length);
       let members=[u];
-      if(rightSideSibs){
-        // Include the married-in unit itself in the SAME sibling sort as
-        // its siblings (not pinned first/leftmost regardless of its own
-        // recorded position), keyed on the MARRIED sibling's own index
-        // (siblingRtl), not the couple's combined min — otherwise
-        // moveTreeSibling()/drag-reordering on this specific person
-        // silently stops moving them relative to their siblings, since
-        // their cluster position no longer reflects familyTree's own
-        // array order the way every other sibling's does.
-        const pkey=_treeParentKey(byId.get(rightMember).parentIds);
-        members=siblingRtl([u,...sibUnitsOf(rightMember).filter(su=>su!==u)],pkey);
-      } else if(parented.length>=1){
-        const sibUnits=sibUnitsOf(parented[0]);
-        if(sibUnits.length>1){
-          const pkey=_treeParentKey(byId.get(parented[0]).parentIds);
-          members=siblingRtl(sibUnits,pkey);
+      if(bloodMember!=null){
+        const pkey=_treeParentKey(byId.get(bloodMember).parentIds);
+        const groupUnits=sibUnitsOf(bloodMember);
+        if(groupUnits.length>1){
+          // A sibling who married someone from a SEPARATELY recorded
+          // family bridges two family lines — landing that spouse between
+          // two of the sibling's own blood siblings would make it look
+          // like they're siblings too, and drags their own parents across
+          // the in-laws' line above. So that one sibling's couple-unit is
+          // pinned to whichever edge of the group puts the SPOUSE (not the
+          // blood sibling) on the true outer boundary — every other
+          // sibling, regardless of their own recorded/birth order relative
+          // to the couple, ends up on the married sibling's OWN side.
+          // Only handled when exactly one sibling in the group bridges
+          // like this — with two or more, no single edge can satisfy both,
+          // so the group falls back to plain recorded-order.
+          const bridgeUnits=groupUnits.filter(gu=>{
+            if(gu.ids.length!==2)return false;
+            const gBlood=gu.ids.find(id=>_treeParentKey(byId.get(id).parentIds)===pkey);
+            const gSpouse=gu.ids.find(id=>id!==gBlood);
+            return parentUnitOfMember(gSpouse)!=null;
+          });
+          if(bridgeUnits.length===1){
+            const bu=bridgeUnits[0];
+            const bBlood=bu.ids.find(id=>_treeParentKey(byId.get(id).parentIds)===pkey);
+            const bloodOnLeft=bu.ids[0]===bBlood;
+            const rest=siblingRtl(groupUnits.filter(gu=>gu!==bu),pkey);
+            members=bloodOnLeft?[...rest,bu]:[bu,...rest];
+          } else {
+            members=siblingRtl(groupUnits,pkey);
+          }
         }
       }
       const cluster={members,level:l};
