@@ -29,6 +29,8 @@ let yahrzeits=[];
 // then on, since a genealogical tree needs relations families/kids don't
 // model (grandparents, siblings-in-law, multiple generations...).
 let familyTree=[];
+// Family-tree filling competition: {email:{name,points}} — see _awardTreePoint().
+let treeScores={};
 let nxtMsg=1,nxtCal=1,nxtBday=1,nxtClaim=1,nxtNotif=1,nxtPoll=1,nxtCountdown=1,nxtYahrzeit=1,nxtTreePerson=1;
 let currentShell='home';
 let calYear=new Date().getFullYear(),calMonth=new Date().getMonth(),calSelDay=null,calHebrew=true;
@@ -573,6 +575,7 @@ function saveLocal(){
     localStorage.setItem('countdowns',JSON.stringify(countdowns));
     localStorage.setItem('yahrzeits',JSON.stringify(yahrzeits));
     localStorage.setItem('familyTree',JSON.stringify(familyTree));
+    localStorage.setItem('treeScores',JSON.stringify(treeScores));
   }catch(e){}
 }
 
@@ -587,7 +590,7 @@ async function save(){
   showSyncStatus('שומר...');
   try{
     const {db,doc,setDoc}=await fbInit();
-    await setDoc(doc(db,'appData','familyPayments'),{families,events,fund,goalFunds,adminPass,messages,calItems,birthdays,paymentClaims,visits,notifications,polls,countdowns,yahrzeits,familyTree});
+    await setDoc(doc(db,'appData','familyPayments'),{families,events,fund,goalFunds,adminPass,messages,calItems,birthdays,paymentClaims,visits,notifications,polls,countdowns,yahrzeits,familyTree,treeScores});
     localStorage.removeItem('pendingSave');
     localStorage.removeItem('pendingSaveAt');
     showSyncStatus('✓ נשמר',2000);
@@ -624,6 +627,7 @@ function _restoreAllFromLocalCache(){
   const cds=localStorage.getItem('countdowns');if(cds)countdowns=JSON.parse(cds);
   const yhz=localStorage.getItem('yahrzeits');if(yhz)yahrzeits=JSON.parse(yhz);
   const ftr=localStorage.getItem('familyTree');if(ftr)familyTree=JSON.parse(ftr);
+  const trs=localStorage.getItem('treeScores');if(trs)treeScores=JSON.parse(trs);
   nxtMsg=messages.length?Math.max(...messages.map(m=>m.id))+1:1;
   nxtCal=calItems.length?Math.max(...calItems.map(c=>c.id))+1:1;
   nxtBday=birthdays.length?Math.max(...birthdays.map(b=>b.id))+1:1;
@@ -660,6 +664,7 @@ async function load(){
     countdowns=d.countdowns||[];
     yahrzeits=d.yahrzeits||[];
     familyTree=d.familyTree||[];
+    treeScores=d.treeScores||{};
     nxtMsg=messages.length?Math.max(...messages.map(m=>m.id))+1:1;
     nxtCal=calItems.length?Math.max(...calItems.map(c=>c.id))+1:1;
     nxtBday=birthdays.length?Math.max(...birthdays.map(b=>b.id))+1:1;
@@ -1355,6 +1360,7 @@ async function startRealtimeSync(){
           ()=>{nxtYahrzeit=yahrzeits.length?Math.max(...yahrzeits.map(y=>y.id))+1:1;})||changed;
         changed=_adoptIfChanged(d.familyTree||[],()=>familyTree,v=>familyTree=v,
           ()=>{nxtTreePerson=familyTree.length?Math.max(...familyTree.map(p=>p.id))+1:1;})||changed;
+        changed=_adoptIfChanged(d.treeScores||{},()=>treeScores,v=>treeScores=v)||changed;
         if((d.adminPass||'')!==adminPass){adminPass=d.adminPass||'';}
         if(changed)render();
       }
@@ -3732,8 +3738,47 @@ function confirmTreeAdd(){
   familyTree.push(newPerson);
   closeTreeAddModal();
   closeTreePersonModal();
+  _awardTreePoint();
   save();renderFamilyTree();
   _fitTreeWhenReady(); // layout shifted — keep the whole tree in view
+}
+// Family-tree filling competition: 5 points per NEW person added, credited
+// to whichever family email is filling in the tree on THIS device (the
+// index.html per-device email gate — see _myFamId()/deviceEmailSlot3).
+// Admin-side additions (admin.html has no such per-email identity) aren't
+// credited — this is a competition between family members, not the admin.
+function _awardTreePoint(){
+  if(_isAdminPage())return;
+  const fid=_myFamId();if(fid==null)return;
+  const fam=getFam(fid);if(!fam)return;
+  const slot=parseInt(localStorage.getItem('deviceEmailSlot3')||'1');
+  const email=_cleanEmail(slot===2?fam.email2:fam.email);
+  if(!email)return;
+  if(!treeScores[email])treeScores[email]={name:'',points:0};
+  treeScores[email].name=_regDisplayName(fam,slot)||email;
+  treeScores[email].points+=5;
+}
+function openTreeLeaderboardModal(){
+  renderTreeLeaderboard();
+  document.getElementById('treeLeaderboardModal').style.display='flex';
+}
+function closeTreeLeaderboardModal(){
+  document.getElementById('treeLeaderboardModal').style.display='none';
+}
+function renderTreeLeaderboard(){
+  const list=document.getElementById('treeLeaderboardList');if(!list)return;
+  const rows=Object.values(treeScores).sort((a,b)=>b.points-a.points);
+  if(!rows.length){
+    list.innerHTML='<div class="empty" style="padding:24px 0"><span class="empty-ico">🏆</span>עדיין אין נקודות — כל שם חדש שתוסיפו לעץ שווה 5 נקודות!</div>';
+    return;
+  }
+  const medals=['🥇','🥈','🥉'];
+  list.innerHTML=rows.map((r,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:var(--r2);border:1.5px solid var(--border);margin-bottom:6px">
+      <span style="font-size:17px;width:24px;text-align:center;flex-shrink:0">${medals[i]||(i+1)}</span>
+      <span style="flex:1;font-size:13px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.name)}</span>
+      <span style="font-size:13px;font-weight:800;color:var(--blue-mid);white-space:nowrap">${r.points} נק'</span>
+    </div>`).join('');
 }
 // Links two people ALREADY in the tree as siblings — unlike "הוסף אח/אחות"
 // (which creates a brand-new person), this is for two people who are both

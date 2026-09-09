@@ -407,6 +407,7 @@
     <button onclick="closeFamilyTreeOverlay()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);line-height:1;padding:0">✕</button>
     <span style="font-size:16px;font-weight:800;color:var(--text)">🌳 אילן יוחסין</span>
     <div style="display:flex;gap:6px">
+      <button onclick="openTreeLeaderboardModal()" title="תחרות מילוי העץ" style="background:var(--surface2);color:var(--text);border:none;border-radius:var(--r2);width:32px;height:32px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">🏆</button>
       <button onclick="addRootTreePerson()" style="background:var(--blue-mid);color:#fff;border:none;border-radius:var(--r2);padding:7px 12px;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer;white-space:nowrap">+ הוסף אדם</button>
     </div>
   </div>
@@ -417,6 +418,18 @@
     <button onclick="zoomTree(-0.15)" style="width:32px;height:32px;border-radius:50%;border:none;background:var(--surface2);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;font-family:var(--font)">－</button>
     <button onclick="fitTreeToScreen()" style="padding:0 12px;height:32px;border-radius:16px;border:none;background:var(--surface2);color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:var(--font)">⤢ הצג הכל</button>
     <button onclick="zoomTree(0.15)" style="width:32px;height:32px;border-radius:50%;border:none;background:var(--surface2);color:var(--text);font-size:18px;font-weight:700;cursor:pointer;font-family:var(--font)">＋</button>
+  </div>
+</div>
+
+<!-- Family tree: filling competition leaderboard -->
+<div id="treeLeaderboardModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;padding:20px;box-sizing:border-box" onclick="if(event.target===this)closeTreeLeaderboardModal()">
+  <div style="background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:0;width:100%;max-width:380px;max-height:80vh;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden">
+    <div style="padding:16px 18px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:15px;font-weight:800;color:var(--text)">🏆 תחרות מילוי העץ</span>
+      <button onclick="closeTreeLeaderboardModal()" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--text2);line-height:1;padding:0">✕</button>
+    </div>
+    <div style="padding:6px 18px 4px;font-size:12px;color:var(--text2)">כל שם חדש שמוסיפים לעץ המשפחה שווה 5 נקודות ⭐</div>
+    <div id="treeLeaderboardList" style="padding:12px 18px 18px;overflow-y:auto;flex:1;min-height:0"></div>
   </div>
 </div>
 
