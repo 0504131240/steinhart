@@ -288,6 +288,25 @@ function openBroadcastModal(){
 function closeBroadcastModal(){
   document.getElementById('broadcastModal').style.display='none';
 }
+// Shared by sendBroadcastEmail() and previewBroadcastEmail() so the preview
+// is always built exactly the same way as what actually gets sent.
+function _broadcastEmailHtml(subject,msg){
+  const bodyHtml=`<p style="white-space:pre-wrap;margin:0">${_esc(msg)}</p>`;
+  return _emailWrap(bodyHtml,subject,'📢','');
+}
+function previewBroadcastEmail(){
+  const subject=(document.getElementById('broadcastSubject')?.value||'').trim();
+  const msg=(document.getElementById('broadcastMsg')?.value||'').trim();
+  const err=document.getElementById('broadcastErr');
+  if(!subject||!msg){if(err){err.textContent='נא למלא נושא ותוכן כדי לראות תצוגה מקדימה';err.style.display='block';}return;}
+  if(err)err.style.display='none';
+  const frame=document.getElementById('broadcastPreviewFrame');
+  if(frame)frame.srcdoc=_broadcastEmailHtml(subject,msg);
+  document.getElementById('broadcastPreviewModal').style.display='flex';
+}
+function closeBroadcastPreviewModal(){
+  document.getElementById('broadcastPreviewModal').style.display='none';
+}
 function sendBroadcastEmail(){
   const subject=(document.getElementById('broadcastSubject')?.value||'').trim();
   const msg=(document.getElementById('broadcastMsg')?.value||'').trim();
@@ -296,8 +315,7 @@ function sendBroadcastEmail(){
   const recipients=families.filter(f=>f.email||f.email2).map(f=>({email:f.email,email2:f.email2,name:f.name.replace('משפחת','').trim()}));
   if(!recipients.length){if(err){err.textContent='אין משפחות עם כתובת מייל שמורה';err.style.display='block';}return;}
   if(err)err.style.display='none';
-  const bodyHtml=`<p style="white-space:pre-wrap;margin:0">${_esc(msg)}</p>`;
-  const html=_emailWrap(bodyHtml,subject,'📢','');
+  const html=_broadcastEmailHtml(subject,msg);
   sendEmailNotif(recipients,subject,msg,html);
   closeBroadcastModal();
   showToast('📧 ההודעה נשלחה לכולם');
