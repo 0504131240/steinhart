@@ -3142,6 +3142,21 @@ function _treeLayout(people){
       // RTL sibling order: first recorded stays rightmost, so a newly added
       // sibling appears to the LEFT of the ones before it.
       const rtl=arr=>arr.slice().sort((a,b)=>unitMinIndex(b)-unitMinIndex(a));
+      // Sorts sibling UNITS by their BLOOD-relative member's own array
+      // index (not unitMinIndex, which takes the min of both couple
+      // partners) — a married-in spouse's own recorded position in
+      // familyTree has nothing to do with where their partner falls among
+      // the partner's OWN siblings, and letting it leak in scrambles the
+      // sibling order unpredictably depending on unrelated data-entry
+      // order. `pkey` is the shared parentIds key these units' blood
+      // members all share.
+      const siblingRtl=(arr,pkey)=>arr.slice().sort((a,b)=>{
+        const keyOf=m=>{
+          const bloodId=m.ids.find(id=>_treeParentKey(byId.get(id).parentIds)===pkey);
+          return arrayIndex.get(bloodId!=null?bloodId:m.ids[0]);
+        };
+        return keyOf(b)-keyOf(a);
+      });
       const parented=u.ids.filter(id=>byId.get(id).parentIds&&byId.get(id).parentIds.length);
       const hasSibs=id=>sibUnitsOf(id).filter(su=>su!==u).length>0;
       // Extending leftwards is right for a spouse standing on the LEFT of a
@@ -3164,16 +3179,22 @@ function _treeLayout(people){
         &&!hasSibs(u.ids[0]);
       let members=[u];
       if(rightSideSibs){
-        // Include the married-in unit itself in the SAME rtl sort as its
-        // siblings (not pinned first/leftmost regardless of its own
-        // recorded position) — otherwise moveTreeSibling()/drag-reordering
-        // on this specific person silently stops moving them relative to
-        // their siblings, since their cluster position no longer reflects
-        // familyTree's own array order the way every other sibling's does.
-        members=rtl([u,...sibUnitsOf(rightMember).filter(su=>su!==u)]);
+        // Include the married-in unit itself in the SAME sibling sort as
+        // its siblings (not pinned first/leftmost regardless of its own
+        // recorded position), keyed on the MARRIED sibling's own index
+        // (siblingRtl), not the couple's combined min — otherwise
+        // moveTreeSibling()/drag-reordering on this specific person
+        // silently stops moving them relative to their siblings, since
+        // their cluster position no longer reflects familyTree's own
+        // array order the way every other sibling's does.
+        const pkey=_treeParentKey(byId.get(rightMember).parentIds);
+        members=siblingRtl([u,...sibUnitsOf(rightMember).filter(su=>su!==u)],pkey);
       } else if(parented.length>=1){
         const sibUnits=sibUnitsOf(parented[0]);
-        if(sibUnits.length>1)members=rtl(sibUnits);
+        if(sibUnits.length>1){
+          const pkey=_treeParentKey(byId.get(parented[0]).parentIds);
+          members=siblingRtl(sibUnits,pkey);
+        }
       }
       const cluster={members,level:l};
       members.forEach(m=>{ seen.add(m); clusterOfUnit.set(m,cluster); });
