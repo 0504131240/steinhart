@@ -29,7 +29,7 @@ let yahrzeits=[];
 // then on, since a genealogical tree needs relations families/kids don't
 // model (grandparents, siblings-in-law, multiple generations...).
 let familyTree=[];
-// Family-tree filling competition: {email:{name,points}} — see _awardTreePoint().
+// Family-tree filling competition: {email:{name,points}} — see _awardTreePoints().
 let treeScores={};
 let nxtMsg=1,nxtCal=1,nxtBday=1,nxtClaim=1,nxtNotif=1,nxtPoll=1,nxtCountdown=1,nxtYahrzeit=1,nxtTreePerson=1;
 let currentShell='home';
@@ -2701,6 +2701,11 @@ const TREE_NODE_W=112,TREE_NODE_H=80,TREE_H_GAP=40,TREE_COUPLE_GAP=14,TREE_LEVEL
 // spouses, siblings and everyone else keep the standard gaps.
 const TREE_FANOUT_GAP=120;
 let _treeActivePersonId=null,_treeAddRelation=null,_treeAddGender='';
+// What birthYear/deathYear/photo looked like when the person sheet was
+// opened — compared against the current values in saveTreePersonChanges()
+// so points are only ever awarded for NEWLY filling in a field, never for
+// re-saving one that was already filled.
+let _treePersonSnapshot=null;
 // Sub-trees: a person can be marked as one, which folds their descendants
 // out of the main tree. `collapsed` is stored on the person, so the branch
 // stays folded away for everyone; opening one is a local view state that
@@ -3508,6 +3513,7 @@ function _renderTreeGenderButtons(g){
 function openTreePersonModal(id){
   _treeActivePersonId=id;
   const p=familyTree.find(x=>x.id===id);if(!p)return;
+  _treePersonSnapshot={birthYear:p.birthYear||'',deathYear:p.deathYear||'',photo:p.photo||null};
   _treePersonEditPhoto=undefined;
   const photoInp=document.getElementById('treePersonPhoto');
   if(photoInp)photoInp.value='';
@@ -3538,6 +3544,7 @@ function openTreePersonModal(id){
 function closeTreePersonModal(){
   document.getElementById('treePersonModal').style.display='none';
   _treeActivePersonId=null;
+  _treePersonSnapshot=null;
 }
 function setTreePersonGender(g){
   const p=familyTree.find(x=>x.id===_treeActivePersonId);if(!p)return;
@@ -3572,6 +3579,11 @@ function saveTreePersonChanges(){
   if(p&&_treePersonEditPhoto!==undefined){
     p.photo=_treePersonEditPhoto||null;
     _treePersonEditPhoto=undefined;
+  }
+  if(p&&_treePersonSnapshot){
+    if(!_treePersonSnapshot.birthYear&&p.birthYear)_awardTreePoints(2);
+    if(!_treePersonSnapshot.deathYear&&p.deathYear)_awardTreePoints(2);
+    if(!_treePersonSnapshot.photo&&p.photo)_awardTreePoints(5);
   }
   save();
   renderFamilyTree();
@@ -3756,16 +3768,20 @@ function confirmTreeAdd(){
   familyTree.push(newPerson);
   closeTreeAddModal();
   closeTreePersonModal();
-  _awardTreePoint();
+  _awardTreePoints(5);
+  if(birthYear)_awardTreePoints(2);
+  if(deathYear)_awardTreePoints(2);
   save();renderFamilyTree();
   _fitTreeWhenReady(); // layout shifted — keep the whole tree in view
 }
-// Family-tree filling competition: 5 points per NEW person added, credited
-// to whichever family email is filling in the tree on THIS device (the
-// index.html per-device email gate — see _myFamId()/deviceEmailSlot3).
-// Admin-side additions (admin.html has no such per-email identity) aren't
-// credited — this is a competition between family members, not the admin.
-function _awardTreePoint(){
+// Family-tree filling competition: 5 points for a new person, 2 for newly
+// filling in a birth/death year, 5 for newly adding a photo (see the
+// callers) — credited to whichever family email is filling in the tree on
+// THIS device (the index.html per-device email gate — see
+// _myFamId()/deviceEmailSlot3). Admin-side additions (admin.html has no
+// such per-email identity) aren't credited — this is a competition between
+// family members, not the admin.
+function _awardTreePoints(points){
   if(_isAdminPage())return;
   const fid=_myFamId();if(fid==null)return;
   const fam=getFam(fid);if(!fam)return;
@@ -3774,7 +3790,7 @@ function _awardTreePoint(){
   if(!email)return;
   if(!treeScores[email])treeScores[email]={name:'',points:0};
   treeScores[email].name=_regDisplayName(fam,slot)||email;
-  treeScores[email].points+=5;
+  treeScores[email].points+=points;
 }
 function openTreeLeaderboardModal(){
   renderTreeLeaderboard();
