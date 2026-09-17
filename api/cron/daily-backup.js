@@ -15,7 +15,7 @@
 // sole source of that reminder. Doing all three here, gated by
 // day-of-week where relevant, is the only way that's actually reliable on
 // this plan.
-const { getDb, getMessaging, dedupeTokenDocs, notifPrefAllows, isShabbatNow, isYomTovNow } = require('../_lib/firebaseAdmin');
+const { getDb, getMessaging, dedupeTokenDocs, notifPrefAllows, isShabbatNow, isYomTovNow, sendViaEmailJS, notifEmailHtml } = require('../_lib/firebaseAdmin');
 const { allBirthdays, ageLabel, bmLabel } = require('../_lib/birthdayCalc');
 const { sendWeeklyDebtReminders } = require('./weekly-debt-reminder');
 
@@ -32,8 +32,19 @@ async function sendBirthdayReminders(db, data) {
   const all = allBirthdays(data.families || [], data.yahrzeits || []);
   if (!all.length) return { occasions: 0, sent: 0 };
 
+  // Families that opted into email-instead-of-push (see the 📧 toggle in
+  // app.js's notifPrefModal) for the 'birthday' category — their own
+  // fcmTokens devices are excluded from the push loop below, and they get
+  // an EmailJS send per occasion instead. This cron has no live browser to
+  // drive the client's own EmailJS call, so it needs the same
+  // publicKey/serviceId/templateId mirrored server-side (settings/emailjs)
+  // that sendWeeklyDebtReminders already relies on.
+  const emailFamIds = new Set((data.families || []).filter(f => f.notifEmailPref?.cats?.birthday).map(f => f.id));
+  const ejsSnap = emailFamIds.size ? await db.doc('settings/emailjs').get() : null;
+  const ejsCreds = ejsSnap?.exists ? ejsSnap.data() : null;
+
   const tokSnap = await db.collection('fcmTokens').get();
-  if (tokSnap.empty) return { occasions: 0, sent: 0 };
+  if (tokSnap.empty && !emailFamIds.size) return { occasions: 0, sent: 0 };
   const tokenDocs = await dedupeTokenDocs(tokSnap.docs);
   const LINKS = {
     admin: 'https://steinhart-livid.vercel.app/admin.html',
@@ -42,6 +53,7 @@ async function sendBirthdayReminders(db, data) {
   const groups = { admin: [], index: [] };
   tokenDocs.forEach(d => {
     const t = d.data();
+    if (t.page !== 'admin' && emailFamIds.has(t.famId)) return;
     groups[t.page === 'admin' ? 'admin' : 'index'].push(d);
   });
 
@@ -96,6 +108,23 @@ async function sendBirthdayReminders(db, data) {
           }
         } catch (e) {
           console.error(`dailyBackup: birthday push failed [${page}]`, e);
+        }
+      }
+
+      if (ejsCreds?.publicKey && ejsCreds?.serviceId && ejsCreds?.templateId) {
+        for (const fid of emailFamIds) {
+          const fam = (data.families || []).find(f => f.id === fid);
+          if (!fam) continue;
+          const famName = fam.name.replace('משפחת', '').trim();
+          const html = notifEmailHtml(title.split(' ')[0], title, body);
+          for (const email of [fam.email, fam.email2].filter(Boolean)) {
+            try {
+              await sendViaEmailJS(ejsCreds.publicKey, ejsCreds.serviceId, ejsCreds.templateId, email, famName, title + ' · Steinhart', body, html);
+              sent++;
+            } catch (e) {
+              console.error('dailyBackup: birthday email failed for', email, e);
+            }
+          }
         }
       }
     }

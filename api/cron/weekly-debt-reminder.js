@@ -3,26 +3,8 @@
 // this project's two cron entries — this file was never invoked on its own
 // schedule, so the reminder silently never went out. Kept as a standalone
 // module, exporting the sendable logic instead of its own HTTP handler.
-const { getMessaging, dedupeTokenDocs } = require('../_lib/firebaseAdmin');
+const { getMessaging, dedupeTokenDocs, escHtml: _escHtml, sendViaEmailJS } = require('../_lib/firebaseAdmin');
 const { evAdjBalance } = require('../_lib/debtCalc');
-
-function _escHtml(s) {
-  return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
-async function sendViaEmailJS(publicKey, serviceId, templateId, toEmail, toName, subject, message, messageHtml) {
-  const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      service_id: serviceId,
-      template_id: templateId,
-      user_id: publicKey,
-      template_params: { to_email: toEmail, to_name: toName, subject, message, message_html: messageHtml },
-    }),
-  });
-  if (!res.ok) throw new Error(`EmailJS ${res.status}: ${await res.text()}`);
-}
 
 function debtEmailContent(famName, debts, totalDebt, creditOffset) {
   const creditLine = creditOffset > 0.5 ? `\n(קוזזה זכות של ₪${Math.round(creditOffset).toLocaleString()} מאירוע פתוח אחר)` : '';
