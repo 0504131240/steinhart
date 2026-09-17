@@ -320,6 +320,32 @@ function sendBroadcastEmail(){
   closeBroadcastModal();
   showToast('📧 ההודעה נשלחה לכולם');
 }
+// Deployed code changes (a new feature, a redesigned screen) don't fire any
+// notification on their own — nothing in the browser runs when Vercel ships
+// a new version, so there's no natural addNotif() call for "the site itself
+// changed" the way there is for a new poll or expense. This gives the admin
+// a quick, manual way to announce one: goes through the normal push/email
+// pipeline (respects each family's push tier and, for 'siteUpdate', their
+// email category choice) — unlike sendBroadcastEmail above, which
+// deliberately ignores preferences and always emails literally everyone.
+function openSiteUpdateModal(){
+  const inp=document.getElementById('siteUpdateText');if(inp)inp.value='';
+  const err=document.getElementById('siteUpdateErr');if(err)err.style.display='none';
+  document.getElementById('siteUpdateModal').style.display='flex';
+}
+function closeSiteUpdateModal(){
+  document.getElementById('siteUpdateModal').style.display='none';
+}
+function sendSiteUpdate(){
+  const text=(document.getElementById('siteUpdateText')?.value||'').trim();
+  const err=document.getElementById('siteUpdateErr');
+  if(!text){if(err){err.textContent='נא לתאר את העדכון';err.style.display='block';}return;}
+  if(err)err.style.display='none';
+  addNotif('🆕',text,undefined,undefined,'siteUpdate');
+  save();
+  closeSiteUpdateModal();
+  showToast('🆕 העדכון נשלח');
+}
 function getPaymentSettings(){
   return{
     name:localStorage.getItem('payTreasurerName')||'',
@@ -1214,6 +1240,7 @@ const NOTIF_EMAIL_CATS=[
   {id:'deposit',ico:'💰',label:'הפקדה חדשה'},
   {id:'familyEdit',ico:'👪',label:'עריכת פרטי משפחה'},
   {id:'goalFund',ico:'🎯',label:'קופה חדשה למטרה'},
+  {id:'siteUpdate',ico:'🆕',label:'עדכון או תכונה חדשה באתר'},
 ];
 // Only these kinds are ever scoped to a specific family (relatedFamIds) —
 // a poll, a birthday, a family-edit or a new goal fund aren't "about" any
