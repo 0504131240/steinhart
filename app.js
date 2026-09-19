@@ -603,6 +603,34 @@ function sendFundUpdateEmail(famId,changeAmt,desc,note){
   const html=_emailWrap(_eCard(rows),'עדכון ארנק','🏦',_ejsUrl()+'#fund');
   sendEmailNotif([{email:f.email,email2:f.email2,name}],'🏦 עדכון ארנק · Steinhart',msg,html);
 }
+// Like sendFundUpdateEmail() above, but for a deposit into a goal fund that
+// was funded straight from the family's own wallet (see useFundForGoalDeposit
+// in confirmGoalDeposit) — the family should still hear about their wallet
+// moving, but framed around the goal fund/gift it went to rather than a
+// plain "ארנק" line, and with the gift's own recipient/name spelled out
+// when the fund has them set.
+function sendGoalWalletTransferEmail(famId,amt,g){
+  const f=getFam(famId);
+  if(!f||(!f.email&&!f.email2)){showToast('⚠️ לא הוגדר מייל למשפחה זו');return;}
+  const key=localStorage.getItem('ejsPublicKey');
+  const svc=localStorage.getItem('ejsServiceId');
+  const tpl=localStorage.getItem('ejsTemplateId');
+  if(!key||!svc||!tpl){showToast('⚠️ הגדרות מייל חסרות — כנס להגדרות משפחות');return;}
+  const name=f.name.replace('משפחת','').trim();
+  const newBal=Math.round(fund.famBalances[String(famId)]||0);
+  const desc=`עבר מהארנק לקופת המטרה "${g.name}"`;
+  const msgLines=[`${desc}: ₪${Math.round(amt).toLocaleString()}`];
+  if(g.recipient)msgLines.push('🎁 עבור: '+g.recipient);
+  if(g.gift)msgLines.push('🎀 מתנה: '+g.gift);
+  msgLines.push('',`יתרתך החדשה בארנק: ₪${newBal.toLocaleString()}`);
+  const msg=msgLines.join('\n');
+  const rows=[[desc,`₪${Math.round(amt).toLocaleString()}`]];
+  if(g.recipient)rows.push(['🎁 עבור',_esc(g.recipient)]);
+  if(g.gift)rows.push(['🎀 מתנה',_esc(g.gift)]);
+  rows.push(['💰 יתרה חדשה בארנק',`₪${newBal.toLocaleString()}`,true]);
+  const html=_emailWrap(_eCard(rows),'הפקדה לקופת מטרה','🎯',_ejsUrl()+'#fund');
+  sendEmailNotif([{email:f.email,email2:f.email2,name}],'🎯 עבר מהארנק לקופת מטרה · Steinhart',msg,html);
+}
 
 function saveLocal(){
   try{
@@ -6786,6 +6814,7 @@ function confirmGoalDeposit(){
     fund.transactions.push({id:nxtTx++,type:'payout',famId:_goalDepositFamId,amount:amt,
       desc:'העברה לקופת מטרה · '+g.name+' → '+name,
       date:new Date().toLocaleDateString('he-IL')});
+    sendGoalWalletTransferEmail(_goalDepositFamId,amt,g);
   }
   g.contributions[_goalDepositFamId]=(g.contributions[_goalDepositFamId]||0)+amt;
   closeGoalDepositSheet();
