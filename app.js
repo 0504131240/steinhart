@@ -6738,7 +6738,8 @@ function addGoalFund(){
   const gift=document.getElementById('goalGift').value.trim();
   const notes=document.getElementById('goalNotes').value.trim();
   goalFunds.push({id:nxtGoal++,name,target,contributions:{},closed:false,archived:false,hiddenFrom:[..._goalHideFamIds],nonPayers:[..._goalNonPayFamIds],recipient:recipient||undefined,gift:gift||undefined,notes:notes||undefined});
-  addNotif('🎯','נוצרה קופה חדשה: '+name,'all',[..._goalHideFamIds],'goalFund',families.filter(f=>!_goalHideFamIds.has(f.id)).map(f=>f.id));
+  const giftInfo=gift?(' — מתנה: '+gift+(recipient?' עבור '+recipient:'')):'';
+  addNotif('🎯','נוצרה קופה חדשה: '+name+giftInfo,'all',[..._goalHideFamIds],'goalFund',families.filter(f=>!_goalHideFamIds.has(f.id)).map(f=>f.id));
   closeGoalForm();
   save();render();
 }
