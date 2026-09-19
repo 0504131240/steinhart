@@ -6823,17 +6823,25 @@ function confirmGoalDeposit(){
   const amt=parseFloat(document.getElementById('goalDepositAmt')?.value)||0;
   if(amt<=0){ alert('נא להזין סכום'); return; }
   const g=goalFunds.find(x=>x.id===_goalDepositGoalId);if(!g)return;
+  const depName=(getFam(_goalDepositFamId)||{}).name?.replace('משפחת','').trim()||'';
   if(_goalDepositFromFund){
     const key=String(_goalDepositFamId);
     const bal=fund.famBalances[key]||0;
     if(bal<amt){alert('אין מספיק יתרה בארנק (₪'+Math.round(bal).toLocaleString()+')');return;}
     fund.famBalances[key]=bal-amt;
-    const name=(getFam(_goalDepositFamId)||{}).name?.replace('משפחת','').trim()||'';
     fund.transactions.push({id:nxtTx++,type:'payout',famId:_goalDepositFamId,amount:amt,
-      desc:'העברה לקופת מטרה · '+g.name+' → '+name,
+      desc:'העברה לקופת מטרה · '+g.name+' → '+depName,
       date:new Date().toLocaleDateString('he-IL')});
   }
   g.contributions[_goalDepositFamId]=(g.contributions[_goalDepositFamId]||0)+amt;
+  // Same "notify + direct email" pairing confirmDeposit() already uses for
+  // plain wallet deposits — the notification center/bell entry (and any
+  // opted-in "email instead of push" family for the 'deposit' category)
+  // gets the gift's own details baked into the text, on top of the direct
+  // confirmation email sendGoalDepositEmail always sends the depositor.
+  const giftInfo=g.gift?(' — מתנה: '+g.gift+(g.recipient?' עבור '+g.recipient:'')):'';
+  const walletNote=_goalDepositFromFund?' (מהארנק)':'';
+  addNotif('🎯',depName+' הפקיד/ה ₪'+Math.round(amt).toLocaleString()+' לקופת "'+g.name+'"'+walletNote+giftInfo,undefined,g.hiddenFrom,'deposit',[_goalDepositFamId]);
   sendGoalDepositEmail(_goalDepositFamId,amt,g,_goalDepositFromFund);
   closeGoalDepositSheet();
   save();render();
