@@ -7756,9 +7756,13 @@ function evCoverLines(ev,fid){
   (ev.settled||[]).forEach(s=>{
     const fromFid=byName(s.from),toFid=byName(s.to),amt=Math.round(s.amt);
     if(fromFid===Number(fid)){
-      const via=s.method==='fund'?'מהארנק':s.method==='pot'?'מקופת האירוע':'ישירות';
       const to=toFid!=null?trim(toFid):(s.to||'');
-      lines.push({t:`שילמתם ₪${amt.toLocaleString()} ${via}${to?` ל${to}`:''}`,a:amt});
+      if(s.method==='treasurer'){
+        lines.push({t:`הגזבר שילם ₪${amt.toLocaleString()}${to?' ל'+to:''} במקומכם`,a:amt});
+      } else {
+        const via=s.method==='fund'?'מהארנק':s.method==='pot'?'מקופת האירוע':'ישירות';
+        lines.push({t:`שילמתם ₪${amt.toLocaleString()} ${via}${to?` ל${to}`:''}`,a:amt});
+      }
     }
     if(toFid===Number(fid)){
       const from=fromFid!=null?trim(fromFid):(s.from||'');
