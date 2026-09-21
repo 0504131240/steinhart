@@ -183,7 +183,13 @@ function evAdjBalance(ev){
     // those fields.
     const fromFid=s.fromFid!=null?s.fromFid:ev.participants.find(fid=>{ const f=getFam(fid); return f&&f.name.replace('משפחת','').trim()===s.from; });
     const toFid=s.toFid!=null?s.toFid:ev.participants.find(fid=>{ const f=getFam(fid); return f&&f.name.replace('משפחת','').trim()===s.to; });
-    if(fromFid!=null) adjBal[fromFid]=(adjBal[fromFid]||0)+s.amt;
+    // A treasurer-fronted transfer (method:'treasurer') only resolves the
+    // CREDITOR's side — the debtor didn't actually pay anything, the
+    // treasurer covered it personally, so the debtor must keep showing as
+    // still owing until they repay the treasurer (a separate 'treasurer-repay'
+    // entry, which — having no toFid of its own — clears the debtor's side
+    // the normal way below).
+    if(fromFid!=null&&s.method!=='treasurer') adjBal[fromFid]=(adjBal[fromFid]||0)+s.amt;
     if(toFid!=null) adjBal[toFid]=(adjBal[toFid]||0)-s.amt;
   });
   (ev.potPayments||[]).forEach(p=>{ adjBal[p.famId]=(adjBal[p.famId]||0)+p.amt; });
@@ -2506,6 +2512,42 @@ function markTransferFromTreasurer(evId, from, fromFid, to, toFid, amt){
   fund.deficit=(fund.deficit||0)+amt;
   save();render();
 }
+// How much of THIS family's debt in THIS event the treasurer fronted and is
+// still outstanding — 'treasurer' entries add to it, 'treasurer-repay'
+// entries (the family actually paying the treasurer back) subtract from it.
+function evTreasurerOwed(ev,fid){
+  let owed=0;
+  (ev.settled||[]).forEach(s=>{
+    if(Number(s.fromFid)!==Number(fid))return;
+    if(s.method==='treasurer')owed+=s.amt;
+    else if(s.method==='treasurer-repay')owed-=s.amt;
+  });
+  return Math.max(0,owed);
+}
+// The family actually pays the treasurer back (in cash, bit, etc. — outside
+// the app) for an amount the treasurer fronted on their behalf in this
+// event. Unlike markTransferFromTreasurer, no one's wallet is credited here
+// — the creditor was already paid when the treasurer originally fronted the
+// money; this only clears the debtor's own remaining obligation (via a
+// settled entry with no toFid, so evAdjBalance resolves just their side)
+// and reduces the shared deficit.
+function markTreasurerRepaid(evId,famId){
+  const ev=events.find(e=>e.id===evId);if(!ev)return;
+  const f=getFam(famId);if(!f)return;
+  const adj=evAdjBalance(ev);
+  const amt=Math.round(Math.min(evTreasurerOwed(ev,famId),Math.max(0,-(adj[famId]||0))));
+  if(amt<=0)return;
+  const name=f.name.replace('משפחת','').trim();
+  if(!confirm(name+' החזירה לגזבר ₪'+amt.toLocaleString()+'?'))return;
+  if(!ev.settled)ev.settled=[];
+  ev.settled.push({from:name,fromFid:famId,to:'הגזבר',toFid:null,amt,method:'treasurer-repay'});
+  fund.deficit=Math.max(0,(fund.deficit||0)-amt);
+  fund.transactions.push({id:nxtTx++,type:'payout',famId:null,amount:amt,
+    desc:name+' החזירה לגזבר עבור "'+ev.name+'"',
+    date:new Date().toLocaleDateString('he-IL')});
+  save();render();
+  if(ev.closed){const nb=evAdjBalance(ev)[famId]||0;if(nb>=-0.5)_sendCloseEvEmailOne(ev,famId);}
+}
 function openPartPayModal(evId,from,fromFid,to,toFid,amt,isFund,fromSettle){
   _ppEvId=evId;_ppFrom=from;_ppFromFid=fromFid;_ppTo=to;_ppToFid=toFid;
   _ppMax=amt;_ppFund=isFund||false;_ppSettle=fromSettle||false;_ppPot=false;
@@ -2589,7 +2631,11 @@ function openPotPayModal(evId,famId){
   const ev=events.find(e=>e.id===evId);if(!ev)return;
   const f=getFam(famId);if(!f)return;
   const adj=evAdjBalance(ev);
-  const owed=Math.round(Math.max(0,-(adj[famId]||0)));
+  // Exclude whatever portion of this debt the treasurer already fronted —
+  // that part isn't paid into the event pot, it's repaid straight to the
+  // treasurer (see markTreasurerRepaid / the evCard row's own button).
+  const treasurerOwed=Math.min(evTreasurerOwed(ev,famId),Math.max(0,-(adj[famId]||0)));
+  const owed=Math.round(Math.max(0,-(adj[famId]||0))-treasurerOwed);
   if(owed<=0)return;
   _ppEvId=evId;_ppFromFid=famId;_ppMax=owed;_ppPot=true;_ppFund=false;_ppSettle=false;
   const name=f.name.replace('משפחת','').trim();
@@ -2645,8 +2691,16 @@ function evCard(ev){
     const tagText=b>0.5?'מקבל ₪'+Math.round(b).toLocaleString():b<-0.5?'מחזיר ₪'+Math.round(Math.abs(b)).toLocaleString():'מסודר ✓';
     const isDebtor=b<-0.5;
     const tagTag=isDebtor?'button':'span';
-    const tagClick=isDebtor?` onclick="openPotPayModal(${ev.id},${fid})"` : '';
+    // Whatever slice of this family's debt the treasurer already fronted
+    // (see markTransferFromTreasurer) can't be paid into the event pot —
+    // there's no creditor left to route it to — so it's repaid straight to
+    // the treasurer instead; only the remainder, if any, still goes through
+    // the normal pot-pay flow.
+    const treasurerOwedAmt=Math.round(Math.min(evTreasurerOwed(ev,fid),Math.max(0,-b)));
+    const potPayableAmt=Math.round(Math.max(0,-b)-treasurerOwedAmt);
+    const tagClick=potPayableAmt>0.5?` onclick="openPotPayModal(${ev.id},${fid})"`:treasurerOwedAmt>0.5?` onclick="markTreasurerRepaid(${ev.id},${fid})"`:'';
     const tagCls='exp-tag '+tagClass+(isDebtor?' exp-tag-clickable':'');
+    const treasurerOwedLine=treasurerOwedAmt>0.5?`<div class="edit-only" style="font-size:11px;color:var(--amber);margin-top:1px;display:flex;align-items:center;gap:6px">💼 הגזבר שילם על חשבונכם ₪${treasurerOwedAmt.toLocaleString()} — טרם הוחזר<button onclick="markTreasurerRepaid(${ev.id},${fid})" style="border:1px solid var(--amber);border-radius:10px;background:none;color:var(--amber);font-size:10px;font-weight:700;font-family:var(--font);cursor:pointer;padding:1px 7px">✓ הוחזר</button></div>`:'';
     const famPotAmt=potOrigByFam[fid]||0;
     const famPotTransAmt=potTransByFam[fid]||0;
     const famPotRefundAmt=potRefundByFam[fid]||0;
@@ -2699,6 +2753,7 @@ function evCard(ev){
               :`<div style="font-size:11px;color:var(--amber);margin-top:1px">💰 הפקיד לקופה ₪${famPotAmt.toLocaleString()}</div>`
             ):''}
             ${famPotRefundAmt>0?`<div style="font-size:11px;color:var(--blue-mid);margin-top:1px">↩ הוחזר עודף ₪${famPotRefundAmt.toLocaleString()}</div>`:''}
+            ${treasurerOwedLine}
           </div>
         </div>
         <div style="width:64px;flex-shrink:0;text-align:center">
@@ -7739,7 +7794,8 @@ function evSettleLines(ev,famId){
     const sFrom=(getFam(s.fromFid)||{}).name?(getFam(s.fromFid).name.replace('משפחת','').trim()):s.from;
     if(isFrom){
       if(s.method==='fund') lines.push(`₪${s.amt.toLocaleString()} שולמו מהארנק ל${sTo}`);
-      else if(s.method==='treasurer') lines.push(`הגזבר שילם ל${sTo} ₪${s.amt.toLocaleString()} במקומכם`);
+      else if(s.method==='treasurer') lines.push(`הגזבר שילם ל${sTo} ₪${s.amt.toLocaleString()} במקומכם — טרם הוחזר לו`);
+      else if(s.method==='treasurer-repay') lines.push(`החזרתם לגזבר ₪${s.amt.toLocaleString()}`);
       else lines.push(`העברה ישירה של ₪${s.amt.toLocaleString()} ל${sTo}`);
     } else if(isTo){
       if(s.method==='fund') lines.push(`₪${s.amt.toLocaleString()} מ${sFrom} – הועברו לארנק`);
@@ -7761,7 +7817,11 @@ function evCoverLines(ev,fid){
     if(fromFid===Number(fid)){
       const to=toFid!=null?trim(toFid):(s.to||'');
       if(s.method==='treasurer'){
-        lines.push({t:`הגזבר שילם ₪${amt.toLocaleString()}${to?' ל'+to:''} במקומכם`,a:amt});
+        // Only the creditor's side actually resolved — the family itself
+        // hasn't paid anything yet, so this doesn't count toward "covered".
+        lines.push({t:`הגזבר שילם ₪${amt.toLocaleString()}${to?' ל'+to:''} במקומכם — טרם הוחזר לו`,a:0});
+      } else if(s.method==='treasurer-repay'){
+        lines.push({t:`החזרתם לגזבר ₪${amt.toLocaleString()}`,a:amt});
       } else {
         const via=s.method==='fund'?'מהארנק':s.method==='pot'?'מקופת האירוע':'ישירות';
         lines.push({t:`שילמתם ₪${amt.toLocaleString()} ${via}${to?` ל${to}`:''}`,a:amt});
@@ -7787,7 +7847,11 @@ function evFamTransfers(ev,famId){
     if(s.method==='pot') return; // pot moves aren't family-to-family
     const isFrom=s.fromFid!=null?Number(s.fromFid)===Number(famId):(_sfByName(s.from)||{}).id===famId;
     const isTo=s.toFid!=null?Number(s.toFid)===Number(famId):(_sfByName(s.to)||{}).id===famId;
-    if(isFrom) out.push({dir:'out',pending:false,amt:Math.round(s.amt),other:nm(s.toFid,s.to)});
+    // A 'treasurer' entry didn't actually involve the debtor transferring
+    // anything — the treasurer fronted it on their behalf — so it shouldn't
+    // show as a completed "out" transfer for them (see evCard's own
+    // dedicated "טרם הוחזר" line + button for that instead).
+    if(isFrom&&s.method!=='treasurer') out.push({dir:'out',pending:false,amt:Math.round(s.amt),other:nm(s.toFid,s.to)});
     else if(isTo) out.push({dir:'in',pending:false,amt:Math.round(s.amt),other:nm(s.fromFid,s.from)});
   });
   calcTransfers(ev).forEach(t=>{
