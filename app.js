@@ -2082,6 +2082,7 @@ function _goalOwedAmt(g,famId){
   // what it would've been regardless of who bought the gift.
   if(famId===g.boughtBy)return 0;
   const eligible=_goalPayers(g);
+  if(!eligible.some(f=>f.id===famId))return 0;
   const perFamily=g.target>0&&eligible.length?Math.ceil(g.target/eligible.length):0;
   if(perFamily<=0)return 0;
   return Math.max(0,perFamily-(g.contributions[famId]||0));
@@ -2381,6 +2382,16 @@ function renderHome(){
     const bal=evAdjBalance(ev);
     ev.participants.forEach(fid=>{ const b=bal[fid]||0; if(Math.abs(b)>0.5) famNet[fid]=(famNet[fid]||0)+b; });
   });
+  // An unpaid goal-fund share is a debt too — fold it in the same way an
+  // event debt is, so a family that's "מסודר" on every event but still
+  // owes a goal fund doesn't wrongly show as fully settled.
+  const openGoalsForNet=goalFunds.filter(g=>!g.closed&&!g.archived);
+  families.forEach(f=>{
+    openGoalsForNet.forEach(g=>{
+      const owed=_goalOwedAmt(g,f.id);
+      if(owed>0.5)famNet[f.id]=(famNet[f.id]||0)-owed;
+    });
+  });
   const famStripEl=document.getElementById('homeFamStrip');
   famStripEl.innerHTML=families.length?`
     <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px">👥 משפחות</div>
@@ -2447,6 +2458,7 @@ function renderHome(){
     const total=goalTotal(g);
     const pct=g.target>0?Math.min(100,Math.round(total/g.target*100)):0;
     const reached=g.target>0&&total>=g.target;
+    const remaining=g.target>0?Math.max(0,Math.round(g.target-total)):0;
     const subText=g.target>0?`נאסף ₪${total.toLocaleString()} מתוך ₪${g.target.toLocaleString()}`:`נאסף ₪${total.toLocaleString()}`;
     const giftLine=[g.gift,g.recipient?'עבור '+g.recipient:null].filter(Boolean).join(' · ');
     return`<div class="home-row home-row-col" onclick="goToGoalFund(${g.id})">
@@ -2457,7 +2469,7 @@ function renderHome(){
           ${giftLine?`<div class="home-row-sub">🎁 ${esc(giftLine)}</div>`:''}
           <div class="home-row-sub">${subText}</div>
         </div>
-        ${reached?'<span class="badge badge-green">✅ הושלם</span>':''}
+        ${reached?'<span class="badge badge-green">✅ הושלם</span>':remaining>0?`<span class="badge badge-amber">חוב ₪${remaining.toLocaleString()}</span>`:''}
       </div>
       ${g.target>0?`<div class="pbar" style="margin-top:10px"><div class="pfill ${reached?'full':'part'}" style="width:${pct}%"></div></div>`:''}
     </div>`;
@@ -7152,6 +7164,7 @@ function renderGoalFunds(){
     const total=goalTotal(g);
     const pct=g.target>0?Math.min(100,Math.round(total/g.target*100)):0;
     const reached=g.target>0&&total>=g.target;
+    const remaining=g.target>0?Math.max(0,Math.round(g.target-total)):0;
     const subText=g.target>0?`נאסף ₪${total.toLocaleString()} מתוך ₪${g.target.toLocaleString()} · ${pct}%`:`נאסף ₪${total.toLocaleString()}`;
     const giftLine=[g.gift,g.recipient?'עבור '+g.recipient:null].filter(Boolean).join(' · ');
     // Small summary row (same shape as the home page's event/goal rows) —
@@ -7167,7 +7180,7 @@ function renderGoalFunds(){
             ${giftLine?`<div class="home-row-sub">🎁 ${esc(giftLine)}</div>`:''}
             <div class="home-row-sub">${subText}</div>
           </div>
-          ${g.transferred?'<span class="badge badge-green">✅ הועבר</span>':g.boughtBy?'<span class="badge badge-amber">🛍️ נקנה</span>':reached?'<span class="badge badge-green">✅ הושלם</span>':g.closed?'<span class="badge badge-gray">סגור</span>':''}
+          ${g.transferred?'<span class="badge badge-green">✅ הועבר</span>':g.boughtBy?'<span class="badge badge-amber">🛍️ נקנה</span>':reached?'<span class="badge badge-green">✅ הושלם</span>':g.closed?'<span class="badge badge-gray">סגור</span>':remaining>0?`<span class="badge badge-amber">חוב ₪${remaining.toLocaleString()}</span>`:''}
         </div>
         ${g.target>0?`<div class="pbar" style="margin-top:10px"><div class="pfill ${reached?'full':'part'}" style="width:${pct}%"></div></div>`:''}
       </div>
