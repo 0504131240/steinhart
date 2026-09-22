@@ -1906,13 +1906,16 @@ function renderCalEvList(hebDays,bdayByDate){
       const bm=_bmLabel(item,hebYNum);
       const icon=bm?TEFILLIN_SVG:isYahrzeit?`<span class="flame-flicker">🕯️</span>`:isAnniv?'💍':'🎂';
       const label=bm||(isYahrzeit?'יארצייט':isAnniv?'יום נישואין':'יום הולדת');
-      return`<div class="fh-cal-ev"${isYahrzeit?` onclick="openYahrzeitModal(${item.id})" style="cursor:pointer"`:''}>
+      // A yahrzeit entry isn't tied to any one family — editing/deleting it
+      // (unlike just viewing the occasion) is admin-only.
+      const canEditYahrzeit=isYahrzeit&&editMode;
+      return`<div class="fh-cal-ev"${canEditYahrzeit?` onclick="openYahrzeitModal(${item.id})" style="cursor:pointer"`:''}>
         <div class="fh-cal-ev-dot" style="background:#c0392b"></div>
         <div class="fh-cal-ev-info">
           <div class="fh-cal-ev-name">${icon} ${esc(item.name)}${item.kind==='birthday'?ageBadge:esc(ageLbl)} — ${label}</div>
           <div class="fh-cal-ev-date">${lbl}</div>
         </div>
-        ${isYahrzeit?`<button onclick="event.stopPropagation();deleteYahrzeit(${item.id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0 4px;opacity:.5">✕</button>`:''}
+        ${canEditYahrzeit?`<button onclick="event.stopPropagation();deleteYahrzeit(${item.id})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:0 4px;opacity:.5">✕</button>`:''}
       </div>`;
     }
     return`<div class="fh-cal-ev">
