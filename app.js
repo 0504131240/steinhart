@@ -7261,6 +7261,12 @@ function markGoalBought(famId){
   if(!editMode)return;
   const g=goalFunds.find(x=>x.id===_goalPayGoalId);if(!g)return;
   g.boughtBy=famId;
+  // They fronted the purchase themselves — whatever they haven't paid in
+  // yet is no longer owed (same exemption _goalPayers already gives a
+  // manually-excluded family via g.nonPayers, just triggered automatically
+  // here). Anything they'd already paid before being marked stays as is.
+  if(!g.nonPayers)g.nonPayers=[];
+  if(!g.nonPayers.includes(famId))g.nonPayers.push(famId);
   _goalBoughtPickerOpen=false;
   save();render();
   renderGoalPayModal();
@@ -7268,6 +7274,7 @@ function markGoalBought(famId){
 function unmarkGoalBought(){
   if(!editMode)return;
   const g=goalFunds.find(x=>x.id===_goalPayGoalId);if(!g||g.transferred)return;
+  if(g.nonPayers)g.nonPayers=g.nonPayers.filter(id=>id!==g.boughtBy);
   delete g.boughtBy;
   save();render();
   renderGoalPayModal();
