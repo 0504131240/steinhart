@@ -2483,7 +2483,10 @@ function renderHome(){
 
   // ── Banner ──
   const mainBal=fundTotal();
-  const goalBal=_visibleGoalFunds(goalFunds.filter(g=>!g.archived)).reduce((s,g)=>s+goalTotal(g),0);
+  // Once a fund is transferred (confirmGoalPayout), its money has left the
+  // fund and landed in the buyer's wallet — already counted in mainBal —
+  // so counting its own contributions here too would double-count it.
+  const goalBal=_visibleGoalFunds(goalFunds.filter(g=>!g.archived&&!g.transferred)).reduce((s,g)=>s+goalTotal(g),0);
   const evPotsBal=open.reduce((s,ev)=>s+evNetPotBal(ev),0);
   const allBal=mainBal+goalBal+evPotsBal;
   const bannerStats=[
@@ -6965,7 +6968,10 @@ function goToClaimTransfer(claimId){
 
 function renderFund(){
   const mainTotal=fundTotal();
-  const goalTotal2=_visibleGoalFunds(goalFunds.filter(g=>!g.archived&&!g.closed)).reduce((s,g)=>s+goalTotal(g),0);
+  // Once a fund is transferred (confirmGoalPayout), its money has left the
+  // fund and landed in the buyer's wallet — already counted in mainTotal —
+  // so counting its own contributions here too would double-count it.
+  const goalTotal2=_visibleGoalFunds(goalFunds.filter(g=>!g.archived&&!g.closed&&!g.transferred)).reduce((s,g)=>s+goalTotal(g),0);
   const evPotsTotal=events.filter(e=>e.open).reduce((s,ev)=>s+evNetPotBal(ev),0);
   const grandTotal=mainTotal+goalTotal2+evPotsTotal;
 
