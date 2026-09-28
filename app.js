@@ -5681,7 +5681,12 @@ function saveFamEdit(){
   if(!name){ alert('נא להזין שם'); return; }
   if(!name.startsWith('משפחת'))name='משפחת '+name;
   f.name=name;
-  if(_famEditPhoto!==undefined) f.photo=_famEditPhoto||undefined;
+  // ||null, not ||undefined — Firestore's setDoc throws outright on any
+  // undefined anywhere in the write, which would silently break every
+  // future save from here on (see the same fix in addGoalFund/
+  // confirmDeposit). null reads exactly the same as undefined everywhere
+  // this is checked (always a plain truthiness check).
+  if(_famEditPhoto!==undefined) f.photo=_famEditPhoto||null;
   _famEditPhoto=undefined;
   f.namesConfirmed=true;
   if(!editMode)addNotif('👪',f.name+' עדכנ/ה את פרטי המשפחה','admin',undefined,'familyEdit');
@@ -6669,7 +6674,12 @@ function addNotif(icon,text,pushTarget,hiddenFromFamIds,kind,relatedFamIds,exclu
   // event (a family editing their own info, a payment confirmation) still
   // showed up for everyone there. Tagging the entry itself with the same
   // audience lets the center filter it out for non-admin viewers too.
-  notifications.unshift({id:nxtNotif++,icon,text,ts:Date.now(),audience:pushTarget==='admin'?'admin':'all',hiddenFrom:hiddenFromFamIds&&hiddenFromFamIds.length?hiddenFromFamIds:undefined});
+  // hiddenFrom is omitted entirely (not set to undefined) when there's no
+  // hide list — most calls don't pass one, and Firestore's setDoc throws
+  // outright on any undefined anywhere in the write, which would silently
+  // break every future save from here on. Read side already treats a
+  // missing key the same as an empty list (n.hiddenFrom||[]).
+  notifications.unshift({id:nxtNotif++,icon,text,ts:Date.now(),audience:pushTarget==='admin'?'admin':'all',...(hiddenFromFamIds&&hiddenFromFamIds.length?{hiddenFrom:hiddenFromFamIds}:{})});
   if(notifications.length>200)notifications.length=200;
   renderNotifCenterBadge();
   const emailOptedSlots=_sendCategoryEmails(icon,text,kind,hiddenFromFamIds,relatedFamIds,excludeEmailFamIds);
@@ -7207,7 +7217,11 @@ function addGoalFund(){
   const recipient=document.getElementById('goalRecipient').value.trim();
   const gift=document.getElementById('goalGift').value.trim();
   const notes=document.getElementById('goalNotes').value.trim();
-  goalFunds.push({id:nxtGoal++,name,target,contributions:{},closed:false,archived:false,hiddenFrom:[..._goalHideFamIds],nonPayers:[..._goalNonPayFamIds],recipient:recipient||undefined,gift:gift||undefined,notes:notes||undefined});
+  // ||null, not ||undefined — Firestore's setDoc throws outright on any
+  // undefined anywhere in the write, which would silently break every
+  // future save from here on. null reads exactly the same as undefined
+  // everywhere these three fields are checked (always plain truthiness).
+  goalFunds.push({id:nxtGoal++,name,target,contributions:{},closed:false,archived:false,hiddenFrom:[..._goalHideFamIds],nonPayers:[..._goalNonPayFamIds],recipient:recipient||null,gift:gift||null,notes:notes||null});
   const giftInfo=gift?(' — מתנה: '+gift+(recipient?' עבור '+recipient:'')):'';
   addNotif('🎯','נוצרה קופה חדשה: '+name+giftInfo,'all',[..._goalHideFamIds],'goalFund',families.filter(f=>!_goalHideFamIds.has(f.id)).map(f=>f.id));
   closeGoalForm();
@@ -7863,11 +7877,16 @@ function confirmDeposit(){
   }
   const delta=isDeposit?amt:-amt;
   fund.famBalances[key]=(fund.famBalances[key]||0)+delta;
+  // ||null, not ||undefined — Firestore's setDoc throws outright on any
+  // undefined anywhere in the write, which would silently break every
+  // future save from here on. A note is optional and very often left
+  // blank, so this was likely the single most common trigger for exactly
+  // that failure.
   fund.transactions.push({id:nxtTx++,
     type:isDeposit?'deposit':'withdraw',
     famId:_depositFamId,amount:amt,
     desc:isDeposit?name+' הפקיד לארנק':name+' משך מהארנק',
-    note:note||undefined,
+    note:note||null,
     date:new Date().toLocaleDateString('he-IL')});
   const _notifyFamId=_depositFamId;
   closeDepositSheet();
