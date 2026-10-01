@@ -7,7 +7,7 @@ const COLORS=[
 let families=[];
 let events=[];
 let nxtId=1,nxtFam=1,actYear='all',expanded=new Set();
-let collapsedEvents=new Set(),expandedArchGoals=new Set();
+let collapsedEvents=new Set();
 let expandedCumFamilies=new Set();
 let expandedPotFamilies=new Set();
 let addExpItemEvId=null,addExpItemFamId=null,addExpItemSharedWith=null,addExpItemSplitMode='equal',_editExpItemId=null,addExpItemFromPot=false,addExpItemPayMode='single',addExpItemMethod='equal';
@@ -986,7 +986,7 @@ function showSyncStatus(msg,hideAfter){
 
 function render(){
   applyEditMode();
-  const fns=[renderHome,renderMetrics,renderOpenList,renderArchive,renderFamilies,renderFund,renderGoalFunds,renderFamilyHome,renderClaimsBanner,renderVisitLog,renderNotifCenterBadge,renderPollBanner,renderFamilyTreeIfOpen];
+  const fns=[renderHome,renderMetrics,renderOpenList,renderArchive,renderFamilies,renderFund,renderGoalFunds,renderFamilyHome,renderClaimsBanner,renderVisitLog,renderNotifCenterBadge,renderPollBanner,renderFamilyTreeIfOpen,renderArchiveEvDetailIfOpen];
   fns.forEach(fn=>{try{fn();}catch(e){console.error(fn.name,e);}});
   const debt=calcDebt();
   const open=events.filter(e=>e.open).length;
@@ -3250,19 +3250,12 @@ function renderArchiveGoals(){
   if(!el)return;
   const archived=_visibleGoalFunds(goalFunds.filter(g=>g.archived));
   if(!archived.length){el.innerHTML='';return;}
+  // Clicking the card opens the same rich goalPayModal active funds use
+  // (see openGoalPayModal — it doesn't care whether the fund is archived)
+  // instead of the old inline "▼ פרטים" toggle.
   el.innerHTML=`<div class="sec-ttl" style="margin-top:18px">קופות מטרה בארכיון</div>`+archived.map(g=>{
     const total=goalTotal(g);
-    const isExp=expandedArchGoals.has(g.id);
-    const rows=families.map(f=>{
-      const cl=col(f.id);
-      const c=g.contributions[f.id]||0;
-      return`<div class="amrow">
-        ${famAva(f, 30)}
-        <span style="font-size:13px;font-weight:600;flex:1">${esc(f.name.replace('משפחת','').trim())}</span>
-        <span style="font-size:12px;color:var(--text2)">הפקיד ₪${c.toLocaleString()}</span>
-      </div>`;
-    }).join('');
-    return`<div class="acard">
+    return`<div class="acard" onclick="openGoalPayModal(${g.id})" style="cursor:pointer">
       <div class="acard-head">
         <div style="flex:1">
           <div class="acard-title">🔒 🎯 ${esc(g.name)}</div>
@@ -3270,14 +3263,9 @@ function renderArchiveGoals(){
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
           <span class="total-chip">₪${total.toLocaleString()}</span>
-          <button class="exp-btn" onclick="toggleArchGoalExp(${g.id})">${isExp?'▲ סגור':'▼ פרטים'}</button>
+          <span style="font-size:11px;color:var(--text3)">◂ פרטים</span>
         </div>
       </div>
-      ${isExp?`<div class="acard-body">${rows}
-        <div class="card-actions">
-          <button class="action-btn edit-only" onclick="reopenGoalFund(${g.id})">🔓 פתח מחדש</button>
-          <button class="action-btn red edit-only" onclick="delGoalFund(${g.id})">🗑 מחק</button>
-        </div></div>`:''}
     </div>`;
   }).join('');
 }
@@ -3290,38 +3278,24 @@ function renderArchive(){
   const filtered=actYear==='all'?closed:closed.filter(e=>e.date.includes(actYear));
   if(!filtered.length){document.getElementById('archList').innerHTML=`<div class="empty"><span class="empty-ico">🗂️</span>${closed.length?'אין אירועים לשנה זו':'הארכיון ריק'}</div>`;return;}
   document.getElementById('archList').innerHTML=filtered.map(ev=>{
-    const cost=evCost(ev);const isExp=expanded.has(ev.id);
+    const cost=evCost(ev);
     const excl=families.filter(f=>ev.excluded.includes(f.id));
-    const mems=ev.participants.map(fid=>{
-      const f=getFam(fid);if(!f)return'';const cl=col(fid);
-      const spent=ev.expenses[fid]||0;
-      const b=evBalance(ev)[fid];
-      return`<div class="amrow">
-        ${famAva(f, 30)}
-        <span style="font-size:13px;font-weight:600;flex:1">${esc(f.name.replace('משפחת','').trim())}</span>
-        <span style="font-size:12px;color:var(--text2)">שילם ₪${spent.toLocaleString()}</span>
-        <span class="badge ${b>=0?'badge-green':'badge-amber'}" style="font-size:10px">${b>=0?'קיבל ₪'+b:'החזיר ₪'+Math.abs(b)}</span>
-      </div>`;
-    }).join('');
     const exclLine=excl.length?`<div class="excl">לא השתתפו: ${excl.map(f=>esc(f.name.replace('משפחת','').trim())).join(', ')}</div>`:'';
-    return`<div class="acard">
+    // Clicking the card opens the full evCard breakdown in a popup (see
+    // openArchiveEvDetail) instead of the old inline "▼ פרטים" toggle.
+    return`<div class="acard" id="ecard-${ev.id}" onclick="openArchiveEvDetail(${ev.id})" style="cursor:pointer">
       <div class="acard-head">
         <div style="flex:1">
           <div class="acard-title">🔒 ${esc(ev.name)}</div>
           <div class="acard-meta">${ev.date&&ev.date!=='לא צוין'?esc(ev.date)+' · ':''}${ev.participants.length} משפחות · ${shareLabel(ev)}</div>
           ${ev.closedOn?`<div class="acard-closed">נסגר: ${ev.closedOn}</div>`:''}
+          ${exclLine}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
           <span class="total-chip">₪${cost.toLocaleString()}</span>
-          <button class="exp-btn" onclick="toggleExp(${ev.id})">${isExp?'▲ סגור':'▼ פרטים'}</button>
+          <span style="font-size:11px;color:var(--text3)">◂ פרטים</span>
         </div>
       </div>
-      ${isExp?`<div class="acard-body">${mems}${exclLine}
-        <div class="card-actions">
-          <button class="action-btn edit-only" onclick="editEv(${ev.id})">✏️ ערוך</button>
-          <button class="action-btn edit-only" onclick="reopenEv(${ev.id})">🔓 פתח מחדש</button>
-          <button class="action-btn red edit-only" onclick="delEv(${ev.id})">🗑 מחק</button>
-        </div></div>`:''}
     </div>`;
   }).join('');
 }
@@ -5023,6 +4997,7 @@ function _reportYears(){
   const ys=new Set();
   events.forEach(ev=>{const y=_extractYear(ev.date);if(y)ys.add(y);});
   (fund.transactions||[]).forEach(t=>{const y=_heILDateYear(t.date);if(y)ys.add(y);});
+  goalFunds.forEach(g=>(g.contribLog||[]).forEach(e=>{const y=_heILDateYear(e.date);if(y)ys.add(y);}));
   const cur=new Date().getFullYear();
   ys.add(cur);
   return [...ys].sort((a,b)=>b-a);
@@ -5083,6 +5058,17 @@ function renderAnnualReport(){
   const fundTx=(fund.transactions||[]).filter(t=>_heILDateYear(t.date)===year);
   const fundDeposits=fundTx.filter(t=>t.type==='deposit').reduce((s,t)=>s+t.amount,0);
   const fundPayouts=fundTx.filter(t=>t.type==='payout').reduce((s,t)=>s+t.amount,0);
+  // Goal funds only track a date per contribution from the day this feature
+  // shipped onward (g.contribLog) — older contributions have no date and so
+  // can't be attributed to a specific year; see goalUntracked below.
+  const goalContribThisYear=[];
+  goalFunds.forEach(g=>{
+    const entries=(g.contribLog||[]).filter(e=>_heILDateYear(e.date)===year);
+    if(!entries.length)return;
+    goalContribThisYear.push({g,sum:entries.reduce((s,e)=>s+e.amt,0)});
+  });
+  const goalContribTotal=goalContribThisYear.reduce((s,x)=>s+x.sum,0);
+  const goalUntracked=goalFunds.some(g=>goalTotal(g)>0.5&&(g.contribLog||[]).reduce((s,e)=>s+e.amt,0)<goalTotal(g)-0.5);
   const _famActive=_reportView==='family';
   const toggleHtml=`<div style="display:flex;gap:6px;margin-bottom:14px">
     <button onclick="setReportView('family')" style="flex:1;padding:8px;border-radius:var(--r2);border:1.5px solid ${_famActive?'var(--blue-mid)':'var(--border)'};background:${_famActive?'var(--blue-mid)':'transparent'};color:${_famActive?'#fff':'var(--text2)'};font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer">👨‍👩‍👧‍👦 לפי משפחות</button>
@@ -5098,6 +5084,11 @@ function renderAnnualReport(){
         <div style="font-size:11px;color:var(--text2)">סה"כ הוצאות</div>
         <div style="font-size:22px;font-weight:800">₪${totalCost.toLocaleString()}</div>
       </div>
+      ${goalContribThisYear.length?`<div style="background:var(--surface2);border-radius:var(--r2);padding:12px;text-align:center;grid-column:1/-1">
+        <div style="font-size:11px;color:var(--text2)">🎯 קופות מטרה</div>
+        <div style="font-size:22px;font-weight:800">₪${goalContribTotal.toLocaleString()}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px">${goalContribThisYear.map(x=>esc(x.g.name)+': ₪'+x.sum.toLocaleString()).join(' · ')}</div>
+      </div>`:''}
     </div>
     ${fundTx.length?`<div style="font-size:12px;color:var(--text2);margin-bottom:14px">🏦 ארנק: הופקדו ₪${fundDeposits.toLocaleString()} · שולמו ₪${fundPayouts.toLocaleString()}</div>`:''}
     ${toggleHtml}
@@ -5109,6 +5100,7 @@ function renderAnnualReport(){
     <div>${evRows}</div>
     `}
     ${undatedCount?`<div style="font-size:11px;color:var(--text3);margin-top:12px">* ${undatedCount} אירועים ללא תאריך שנה מזוהה אינם כלולים בדוח</div>`:''}
+    ${goalUntracked?`<div style="font-size:11px;color:var(--text3);margin-top:6px">* קופות מטרה: מוצגות רק הפקדות מתאריך תחילת המעקב ואילך — הפקדות קודמות לא מיוחסות לשנה מסוימת</div>`:''}
   `;
 }
 function famAva(f, size=34, extra=''){
@@ -6438,12 +6430,40 @@ function delEv(evId){
   if(!confirm('למחוק את האירוע?'))return;
   events=events.filter(e=>e.id!==evId);expanded.delete(evId);save();render();
 }
-function toggleExp(evId){
-  if(expanded.has(evId)){expanded.delete(evId);history.replaceState(null,'','#archive');}
-  else{expanded.add(evId);history.replaceState(null,'','#archive-'+evId);}
-  renderArchive();
-}
 function setYear(y){actYear=y;renderArchive();}
+// Popup detail for an archived event — reuses evCard() verbatim (the same
+// rich, item-by-item breakdown open events show on the home/payments tab),
+// instead of the old bare-bones inline "▼ פרטים" participant list. Kept in
+// sync via renderArchiveEvDetailIfOpen (called from the main render()
+// loop, same pattern as renderFamilyTreeIfOpen) rather than threading a
+// refresh call through every one of evCard's own action handlers.
+let _archiveEvDetailId=null;
+function openArchiveEvDetail(evId){
+  _archiveEvDetailId=evId;
+  renderArchiveEvDetail();
+  document.getElementById('archiveEvDetailModal').style.display='flex';
+}
+function closeArchiveEvDetail(){
+  document.getElementById('archiveEvDetailModal').style.display='none';
+  _archiveEvDetailId=null;
+}
+function renderArchiveEvDetail(){
+  const ev=events.find(e=>e.id===_archiveEvDetailId);if(!ev)return;
+  const titleEl=document.getElementById('archiveEvDetailTitle');
+  if(titleEl)titleEl.textContent='🔒 '+ev.name;
+  const bodyEl=document.getElementById('archiveEvDetailBody');
+  if(bodyEl)bodyEl.innerHTML=evCard(ev);
+  const actionsEl=document.getElementById('archiveEvDetailActions');
+  if(actionsEl)actionsEl.innerHTML=`
+    <button class="action-btn" style="flex:1" onclick="closeArchiveEvDetail();editEv(${ev.id})">✏️ ערוך</button>
+    <button class="action-btn" style="flex:1" onclick="closeArchiveEvDetail();reopenEv(${ev.id})">🔓 פתח מחדש</button>
+    <button class="action-btn red" style="flex:1" onclick="closeArchiveEvDetail();delEv(${ev.id})">🗑 מחק</button>
+  `;
+}
+function renderArchiveEvDetailIfOpen(){
+  const modal=document.getElementById('archiveEvDetailModal');
+  if(modal&&modal.style.display==='flex')renderArchiveEvDetail();
+}
 function addFam(inputId){
   const inp=document.getElementById(inputId||'famInput');
   let name=inp.value.trim();if(!name)return;
@@ -6495,18 +6515,17 @@ function handleHash(){
     const _hEv=events.find(e=>e.id===id);
     if(_hEv&&!_hEv.open){
       goTab('archive',null,true);
-      expanded.add(id);renderArchive();
+      openArchiveEvDetail(id);
     } else {
       goTab('events',document.getElementById('nb-events'),true);
       collapsedEvents.delete(id);renderOpenList();
+      setTimeout(()=>{const el=document.getElementById('ecard-'+id);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},150);
     }
-    setTimeout(()=>{const el=document.getElementById('ecard-'+id);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},150);
   } else if(h.startsWith('archive-')){
     const id=parseInt(h.slice(8));if(isNaN(id))return;
     _enterPayShell();
     goTab('archive',null);
-    expanded.add(id);renderArchive();
-    setTimeout(()=>{const el=document.getElementById('ecard-'+id);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},150);
+    openArchiveEvDetail(id);
   } else if(h.startsWith('confirm-')){
     const parts=h.slice(8).split('-').map(Number);
     const [evId,famId,amt]=parts;
@@ -7335,6 +7354,8 @@ function confirmGoalDeposit(){
       date:new Date().toLocaleDateString('he-IL')});
   }
   g.contributions[_goalDepositFamId]=(g.contributions[_goalDepositFamId]||0)+amt;
+  if(!g.contribLog)g.contribLog=[];
+  g.contribLog.push({famId:_goalDepositFamId,amt,date:new Date().toLocaleDateString('he-IL')});
   // Same "notify + direct email" pairing confirmDeposit() already uses for
   // plain wallet deposits — the bell entry (visible only to this family
   // and admin, see _hideFromAllBut) gets the gift's own details baked into
@@ -7369,13 +7390,10 @@ function archiveGoalFund(goalId){
 }
 function reopenGoalFund(goalId){
   const g=goalFunds.find(x=>x.id===goalId);if(!g)return;
-  g.archived=false;expandedArchGoals.delete(goalId);
+  g.archived=false;
+  if(_goalPayGoalId===goalId)closeGoalPayModal();
   save();render();
   openFundDetail();
-}
-function toggleArchGoalExp(goalId){
-  if(expandedArchGoals.has(goalId))expandedArchGoals.delete(goalId);else expandedArchGoals.add(goalId);
-  renderArchive();
 }
 function renderGoalFunds(){
   const el=document.getElementById('goalFundsList');
@@ -7536,12 +7554,12 @@ function renderGoalPayModal(){
   // only renders once this specific fund's modal is open.
   const menuEl=document.getElementById('goalPayMenu');
   if(menuEl){
-    menuEl.innerHTML=(!g.closed?`<button onclick="openGoalDepositSheet(${g.id})" style="width:100%;padding:11px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer;margin-bottom:8px">↓ הפקדה</button>`:'')+
+    menuEl.innerHTML=(!g.closed&&!g.archived?`<button onclick="openGoalDepositSheet(${g.id})" style="width:100%;padding:11px;border-radius:var(--r2);border:none;background:var(--blue-mid);color:#fff;font-size:14px;font-weight:700;font-family:var(--font);cursor:pointer;margin-bottom:8px">↓ הפקדה</button>`:'')+
       boughtSection+
       `<div class="card-actions" style="margin:0">
         <button class="action-btn" onclick="openGoalPayersModal(${g.id})">👥 השתתפות</button>
-        <button class="action-btn" onclick="toggleGoalClosed(${g.id})">${g.closed?'↩️ פתח מחדש':'✓ סגור קופה'}</button>
-        <button class="action-btn blue" onclick="archiveGoalFund(${g.id})">🗂 לארכיון</button>
+        ${g.archived?'':`<button class="action-btn" onclick="toggleGoalClosed(${g.id})">${g.closed?'↩️ פתח מחדש':'✓ סגור קופה'}</button>`}
+        ${g.archived?`<button class="action-btn blue" onclick="reopenGoalFund(${g.id})">↩️ פתח מחדש מארכיון</button>`:`<button class="action-btn blue" onclick="archiveGoalFund(${g.id})">🗂 לארכיון</button>`}
         <button class="action-btn red" onclick="delGoalFund(${g.id})">🗑 מחק</button>
       </div>`;
   }
@@ -7555,6 +7573,13 @@ function toggleGoalPaid(famId){
   const prevAmt=g.contributions[famId]||0;
   const paid=prevAmt>=perFamily;
   g.contributions[famId]=paid?0:perFamily;
+  if(!paid){
+    const addedAmt0=perFamily-prevAmt;
+    if(addedAmt0>0){
+      if(!g.contribLog)g.contribLog=[];
+      g.contribLog.push({famId,amt:addedAmt0,date:new Date().toLocaleDateString('he-IL')});
+    }
+  }
   save();render();
   renderGoalPayModal();
   if(!paid){
@@ -7650,6 +7675,8 @@ function markGoalContribFromTreasurer(goalId,famId){
   const name=f.name.replace('משפחת','').trim();
   if(!confirm('הגזבר ישלם ₪'+owed.toLocaleString()+' עבור '+name+' בקופת "'+g.name+'"?'))return;
   g.contributions[famId]=(g.contributions[famId]||0)+owed;
+  if(!g.contribLog)g.contribLog=[];
+  g.contribLog.push({famId,amt:owed,date:new Date().toLocaleDateString('he-IL')});
   if(!g.treasurerLog)g.treasurerLog=[];
   g.treasurerLog.push({famId,amt:owed,method:'treasurer',date:new Date().toLocaleDateString('he-IL')});
   fund.deficit=(fund.deficit||0)+owed;
