@@ -5,7 +5,7 @@
 // module, exporting the sendable logic instead of its own HTTP handler.
 const { getMessaging, dedupeTokenDocs, escHtml: _escHtml, sendViaEmailJS } = require('../_lib/firebaseAdmin');
 const { evAdjBalance } = require('../_lib/debtCalc');
-const { normalizePhone } = require('../_lib/yemot');
+const { familyPhones } = require('../_lib/yemot');
 
 function debtEmailContent(famName, debts, totalDebt, creditOffset) {
   const creditLine = creditOffset > 0.5 ? `\n(קוזזה זכות של ₪${Math.round(creditOffset).toLocaleString()} מאירוע פתוח אחר)` : '';
@@ -80,10 +80,9 @@ async function sendWeeklyDebtReminders(db, data) {
     const totalDebt = Math.round(-(netByFam[fid] || 0));
     const creditOffset = grossDebt - totalDebt;
 
-    const kosherPhone = fam.phonePref?.cats?.debt && normalizePhone(fam.kosherPhone);
-    if (kosherPhone) {
-      phoneEntries.push({ phone: kosherPhone, text: `תזכורת שבועית: למשפחת ${famName} יש חוב פתוח של ${totalDebt} שקלים` });
-    }
+    familyPhones(fam).filter(p => p.cats.debt).forEach(p => {
+      phoneEntries.push({ phone: p.phone, text: `תזכורת שבועית: למשפחת ${famName} יש חוב פתוח של ${totalDebt} שקלים` });
+    });
 
     const addrs = [fam.email, fam.email2].filter(Boolean);
     if (addrs.length && emailReady) {

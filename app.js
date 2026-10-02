@@ -5407,32 +5407,34 @@ function openFamEditSheet(fid){
   }
   if(clearBtn) clearBtn.style.display=f.photo?'inline-block':'none';
   renderFamPeopleGrid();
-  _renderFamPhoneSection(f);
   document.getElementById('famEditOverlay').style.display='flex';
 }
-// Built in JS (after the family members block) so index.html and admin.html
-// don't each need the markup.
-function _renderFamPhoneSection(f){
-  const grid=document.getElementById('famPeopleGrid');if(!grid)return;
-  let el=document.getElementById('famPhoneSection');
-  if(!el){
-    el=document.createElement('div');el.id='famPhoneSection';
-    el.style.cssText='padding-top:14px;margin-top:14px;border-top:1px solid var(--border)';
-    grid.parentElement.after(el);
-  }
-  const cats=f.phonePref?.cats||{};
+// A parent's own kosher phone (slot 1/2, like email/email2), in the parent's
+// person modal. Built in JS so index.html and admin.html don't each need the
+// markup. A family-level number from the first version shows as parent 1's.
+function _parentPhone(f,slot){
+  return f.kosherPhones?.[slot]||(slot===1&&f.kosherPhone?{phone:f.kosherPhone,cats:f.phonePref?.cats||{}}:null);
+}
+function _renderPersonPhoneSection(f,slot){
+  const anchor=document.getElementById('personEmailWrap');if(!anchor)return;
+  let el=document.getElementById('personPhoneSection');
+  if(!el){el=document.createElement('div');el.id='personPhoneSection';el.style.marginBottom='14px';anchor.after(el);}
+  if(slot==null){el.style.display='none';el.innerHTML='';return;}
+  const cur=_parentPhone(f,slot);
+  const cats=cur?.cats||{};
   const on=c=>cats[c.id]!==undefined?!!cats[c.id]:c.def;
-  el.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.3px;margin-bottom:6px">📞 שיחות התראה לטלפון כשר</div>
-    <input type="tel" id="famEditKosherPhone" inputmode="tel" autocomplete="tel" placeholder="מספר טלפון, למשל 0527123456" value="${esc(f.kosherPhone||'')}"
+  el.style.display='block';
+  el.innerHTML=`<div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px">📞 טלפון כשר לשיחות התראה (אופציונלי)</div>
+    <input type="tel" id="personKosherPhone" inputmode="tel" autocomplete="tel" placeholder="מספר טלפון, למשל 0527123456" value="${esc(cur?.phone||'')}"
       style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:14px;font-family:var(--font);background:var(--bg);color:var(--text);box-sizing:border-box;direction:ltr;text-align:right">
-    <div style="font-size:11px;color:var(--text2);line-height:1.5;margin:6px 0 8px">מה שמסומן למטה יגיע בשיחה מוקראת למספר הזה. אין שיחות בשבת ובחג, ושיחות שנוצרו בלילה (22:00–08:00) מגיעות בבוקר.</div>
-    <div id="famPhoneCats" style="display:flex;flex-direction:column;gap:6px">${PHONE_CATS.map(c=>`<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text)"><input type="checkbox" data-cat="${c.id}" ${on(c)?'checked':''}><span>${c.ico} ${c.label}</span></label>`).join('')}</div>
-    ${editMode?`<button type="button" onclick="testKosherPhoneCall()" style="margin-top:10px;padding:8px 14px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer">📞 שיחת בדיקה למספר הזה</button><div id="famPhoneTestStatus" style="font-size:12px;margin-top:6px"></div>`:''}`;
+    <div style="font-size:11px;color:var(--text2);line-height:1.5;margin:6px 0 8px">מה שמסומן יגיע בשיחה מוקראת למספר הזה. אין שיחות בשבת ובחג, ושיחות שנוצרו בלילה (22:00–08:00) מגיעות בבוקר.</div>
+    <div id="personPhoneCats" style="display:flex;flex-direction:column;gap:6px">${PHONE_CATS.map(c=>`<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text)"><input type="checkbox" data-cat="${c.id}" ${on(c)?'checked':''}><span>${c.ico} ${c.label}</span></label>`).join('')}</div>
+    ${editMode?`<button type="button" onclick="testKosherPhoneCall()" style="margin-top:10px;padding:8px 14px;border-radius:20px;border:1.5px solid var(--border);background:transparent;color:var(--text);font-size:12px;font-weight:700;font-family:var(--font);cursor:pointer">📞 שיחת בדיקה למספר הזה</button><div id="personPhoneTestStatus" style="font-size:12px;margin-top:6px"></div>`:''}`;
 }
 async function testKosherPhoneCall(){
-  const st=document.getElementById('famPhoneTestStatus');
+  const st=document.getElementById('personPhoneTestStatus');
   const say=(t,c)=>{if(st){st.textContent=t;st.style.color=c||'var(--text2)';}};
-  const phone=_normPhone(document.getElementById('famEditKosherPhone')?.value);
+  const phone=_normPhone(document.getElementById('personKosherPhone')?.value);
   if(!phone){say('מספר הטלפון לא תקין','var(--red-mid)');return;}
   say('מתקשר...');
   try{
@@ -5766,6 +5768,7 @@ function openPersonModal(mode,kidId){
     else if(bday&&bday.hebDay&&bday.hebMonth){_kidPickedDate=null;_kidLegacyDate={hebMonth:bday.hebMonth,hebDay:bday.hebDay};}
     else{_kidPickedDate=null;_kidLegacyDate=null;}
     deleteBtn.style.display=isP1?((email||nameInp.value||bday)?'block':'none'):(f.parent2Removed?'none':'block');
+    _renderPersonPhoneSection(f,isP1?1:2);
   }else if(mode==='anniv'){
     nameInp.style.display='none';
     emailWrap.style.display='none';
@@ -5791,6 +5794,7 @@ function openPersonModal(mode,kidId){
     title.textContent=k?'✏️ ערוך ילד':'👶 הוסף ילד';
     deleteBtn.style.display=k?'block':'none';
   }
+  if(mode!=='p1'&&mode!=='p2')_renderPersonPhoneSection(f,null);
   updateKidDateBtn();
   document.getElementById('personModal').style.display='flex';
   setTimeout(()=>{if(nameInp)nameInp.focus();},50);
@@ -5805,6 +5809,10 @@ function savePerson(){
   const bday=_currentBdayValue();
   if(_personMode==='p1'||_personMode==='p2'){
     const isP1=_personMode==='p1';
+    const phoneRaw=(document.getElementById('personKosherPhone')?.value||'').trim();
+    const phone=phoneRaw?_normPhone(phoneRaw):null;
+    if(phoneRaw&&!phone){alert('מספר הטלפון הכשר לא תקין');return;}
+    _setParentPhone(f,isP1?1:2,phone?{phone,cats:Object.fromEntries([...document.querySelectorAll('#personPhoneCats input[data-cat]')].map(i=>[i.dataset.cat,i.checked]))}:null);
     const email=_cleanEmail(document.getElementById('personEmail').value)||'';
     const prevEmail=isP1?f.email:f.email2;
     if(isP1){f.email=email;f.emailName=name;}else{f.email2=email;f.emailName2=name;f.parent2Removed=false;}
@@ -5832,12 +5840,20 @@ function savePerson(){
   if(!editMode)addNotif('👪',f.name+' עדכנ/ה פרטים אישיים','admin',undefined,'familyEdit');
   save();renderFamPeopleGrid();render();closePersonModal();
 }
+// null clears it. Saving parent 1 also retires the old family-level number.
+function _setParentPhone(f,slot,val){
+  const m={...(f.kosherPhones||{})};
+  if(val)m[slot]=val;else delete m[slot];
+  f.kosherPhones=Object.keys(m).length?m:null;
+  if(slot===1&&f.kosherPhone!=null){f.kosherPhone=null;f.phonePref=null;}
+}
 function deletePerson(){
   const f=families.find(x=>x.id===_famEditId);if(!f)return;
   if(_personMode==='p1'||_personMode==='p2'){
     const isP1=_personMode==='p1';
     if(!confirm(isP1?'למחוק את פרטי ההורה?':'להסיר את ההורה השני לגמרי?'))return;
     if(isP1){f.email='';f.emailName='';delete f.parent1Bday;}else{f.email2='';f.emailName2='';delete f.parent2Bday;f.parent2Removed=true;}
+    _setParentPhone(f,isP1?1:2,null);
   }else if(_personMode==='anniv'){
     if(!confirm('למחוק את יום הנישואין?'))return;
     delete f.anniversary;
@@ -5860,14 +5876,6 @@ function saveFamEdit(){
   // createKidSubFamily) read as a couple's name like "דני ומירי", not a
   // surname — skip the forced "משפחת " prefix real top-level families get.
   if(!f.subFamily&&!name.startsWith('משפחת'))name='משפחת '+name;
-  const phoneRaw=(document.getElementById('famEditKosherPhone')?.value||'').trim();
-  if(phoneRaw){
-    const phone=_normPhone(phoneRaw);
-    if(!phone){alert('מספר הטלפון הכשר לא תקין');return;}
-    const cats={};
-    document.querySelectorAll('#famPhoneCats input[data-cat]').forEach(i=>{cats[i.dataset.cat]=i.checked;});
-    f.kosherPhone=phone;f.phonePref={cats};
-  }else if(document.getElementById('famEditKosherPhone')){f.kosherPhone=null;f.phonePref=null;}
   f.name=name;
   // ||null, not ||undefined — Firestore's setDoc throws outright on any
   // undefined anywhere in the write, which would silently break every
