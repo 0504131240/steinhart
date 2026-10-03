@@ -61,12 +61,12 @@ const goalTotal=g=>Object.values(g.contributions||{}).reduce((s,v)=>s+v,0);
 const col=id=>COLORS[(id-1)%COLORS.length];
 const ini=n=>n.replace('משפחת','').trim().slice(0,2);
 const getFam=id=>families.find(f=>f.id===id);
-// Real families in order, each immediately followed by its own sub-families
-// (a kid's spouse+grandkids household, see createKidSubFamily) — used
-// wherever participants are picked, so a sub-family chip always reads as
-// grouped right under the family it grew out of instead of scattered.
-const _famChipOrder=()=>families.filter(f=>!f.subFamily).flatMap(f=>
-  [f,...families.filter(sf=>sf.subFamily&&sf.parentFamilyId===f.id)]);
+// Families offered as event participants. A sub-family (a married kid's
+// household, see createKidSubFamily) is part of its parents' family, not a
+// participant of its own — it's only listed when editing an older event it
+// already takes part in, right under its parents, so it can still be removed.
+const _famChipOrder=ev=>families.filter(f=>!f.subFamily).flatMap(f=>
+  [f,...families.filter(sf=>sf.subFamily&&sf.parentFamilyId===f.id&&ev&&ev.participants.includes(sf.id))]);
 const _isAdminPage=()=>/(^|\/)admin\.html$/.test(location.pathname);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const evCost=ev=>(ev.totalCost!=null?ev.totalCost:ev.participants.reduce((s,fid)=>s+(ev.expenses[fid]||0),0))+evPotExpTotal(ev);
@@ -2590,7 +2590,7 @@ function renderHome(){
   const famStripEl=document.getElementById('homeFamStrip');
   famStripEl.innerHTML=families.length?`
     <div style="font-size:13px;font-weight:700;color:var(--text2);margin-bottom:10px">👥 משפחות</div>
-    <div class="home-fam-strip">${families.map(f=>{
+    <div class="home-fam-strip">${families.filter(f=>!f.subFamily||Math.round(famNet[f.id]||0)!==0).map(f=>{
       const cl=col(f.id);
       const netRaw=famNet[f.id]||0;
       const net=Math.round(netRaw);
@@ -5569,6 +5569,14 @@ function openFamDetail(famId){
     </div>`;
   }
 
+  // A sub-family has no wallet, funds or events of its own — it's part of
+  // its parents' family (see createKidSubFamily).
+  if(f.subFamily){
+    document.getElementById('famDetailContent').innerHTML=html;
+    document.getElementById('famDetailOverlay').style.display='flex';
+    return;
+  }
+
   // יתרת ארנק
   html+=`<div style="margin-bottom:14px;padding:12px;background:var(--surface2);border-radius:var(--r2);display:flex;justify-content:space-between;align-items:center">
     <span style="font-size:13px;font-weight:600;color:var(--text2)">🏦 ארנק</span>
@@ -5941,9 +5949,9 @@ function delFamFromEdit(){
   save();render();
 }
 // Creates a new "sub-family" — the household a kid formed once married,
-// living as a normal families[] entry (subFamily:true) so it gets event
-// participation, wallet balance and the birthday list for free via the
-// same id-generic machinery every real family uses. Opens the existing
+// kept as a families[] entry (subFamily:true) mainly so its birthdays and
+// anniversary reach the calendar. It's part of its parents' family: no
+// wallet, not an event participant, shown only inside the parents' card. Opens the existing
 // family-edit sheet immediately so the admin can fill in the spouse's
 // name/photo/wedding date/grandkids using the unchanged p1/p2/anniv/kid
 // flow (parent1 = the married-in kid, parent2 = the spouse).
@@ -6149,7 +6157,7 @@ function editEv(evId){
   document.getElementById('f-name').value=ev.name;
   document.getElementById('f-date').value=ev.dateISO||'';
   ['e-name','e-cost','e-fams'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('show'); });
-  document.getElementById('famChips').innerHTML=_famChipOrder().map(f=>
+  document.getElementById('famChips').innerHTML=_famChipOrder(ev).map(f=>
     `<button class="chip ${ev.participants.includes(f.id)?'on':''}" id="chip-${f.id}" onclick="toggleChip(${f.id})">${f.subFamily?'└ ':''}${esc(f.name.replace('משפחת','').trim())}</button>`
   ).join('');
   updateFamPickSummary();
@@ -8119,7 +8127,7 @@ function openDepositSheet(mode){
     <textarea id="depositNote" rows="2" placeholder="הערה (אופציונלי — תופיע גם במייל שיישלח)"
       style="width:100%;border:1.5px solid var(--border);border-radius:var(--r2);padding:10px 12px;font-size:13px;font-family:var(--font);background:var(--bg);color:var(--text);margin-bottom:14px;box-sizing:border-box;resize:vertical"></textarea>
     <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px">${isDeposit?'מי מפקיד?':'מי מושך?'}</div>
-    ${families.map(f=>{
+    ${families.filter(f=>!f.subFamily||Math.abs(famFundBal(f.id))>0.5).map(f=>{
       const cl=col(f.id);
       const bal=famFundBal(f.id);
       const balColor=bal>0?'var(--green-mid)':bal===0?'var(--text3)':'var(--red-mid)';
