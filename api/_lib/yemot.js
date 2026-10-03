@@ -48,9 +48,14 @@ function familyPhones(f) {
   return out;
 }
 
+// The only kinds a kosher phone can be called for (every call rings, so the
+// list is kept short). Enforced here too, since older saved preferences may
+// still have other kinds checked. The weekly debt reminder calls separately.
+const PHONE_KINDS = new Set(['poll', 'event', 'goalFund', 'money']);
+
 // Every parent phone whose chosen categories include this notification kind.
-function phoneEntriesFor(families, kind, { target, excludeFamIds } = {}, text) {
-  if (!kind || target === 'admin') return [];
+function phoneEntriesFor(families, kind, { target, excludeFamIds, noPhone } = {}, text) {
+  if (!PHONE_KINDS.has(kind) || noPhone || target === 'admin') return [];
   const excluded = new Set(excludeFamIds || []);
   const spoken = speakable(text);
   if (!spoken) return [];
