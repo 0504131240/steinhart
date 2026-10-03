@@ -1461,6 +1461,7 @@ const PHONE_CATS=[
   {id:'event',ico:'📅',label:'אירוע חדש',def:true},
   {id:'goalFund',ico:'🎯',label:'קופה חדשה למטרה',def:true},
   {id:'money',ico:'💰',label:'הפקדת כסף לקופה',def:false},
+  {id:'wallet',ico:'🏦',label:'הפקדה או משיכה בארנק שלנו',def:true},
   {id:'debt',ico:'📋',label:'תזכורת שבועית על חוב פתוח',def:true},
 ];
 const _normPhone=p=>{let d=String(p||'').replace(/\D/g,'');if(d.startsWith('972'))d='0'+d.slice(3);return /^0\d{8,9}$/.test(d)?d:null;};
@@ -7944,7 +7945,7 @@ function markGoalContribFromTreasurer(goalId,famId){
   if(!g.treasurerLog)g.treasurerLog=[];
   g.treasurerLog.push({famId,amt:owed,method:'treasurer',date:new Date().toLocaleDateString('he-IL')});
   fund.deficit=(fund.deficit||0)+owed;
-  addNotif('💼',name+' — הגזבר שילם ₪'+owed.toLocaleString()+' עבורה בקופת "'+g.name+'" (מקדמה, טרם הוחזר)',undefined,_hideFromAllBut([famId],g.hiddenFrom),'deposit',[famId]);
+  addNotif('💼',name+' — הגזבר שילם ₪'+owed.toLocaleString()+' עבורה בקופת "'+g.name+'" (מקדמה, טרם הוחזר)',undefined,_hideFromAllBut([famId],g.hiddenFrom),'deposit',[famId],undefined,true);
   save();render();
   renderGoalPayModal();
 }
