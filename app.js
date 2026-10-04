@@ -1455,10 +1455,12 @@ function renderNotifBtn(){
 // old plain alert when the picker markup isn't on this page (e.g. admin.html
 // intentionally never gained it — the admin device always gets everything).
 const NOTIF_PREFS=[
-  {id:'all',ico:'🔔',title:'כל מה שזז',desc:'עדכון על כל פעילות באפליקציה — הודעות בצ\'אט, סקרים, אירועים, הוצאות ועוד.'},
-  {id:'important',ico:'📌',title:'עדכונים חשובים',desc:'ימי הולדת, פתיחה/סגירה של אירוע, הוצאות חדשות וכדומה — בלי הודעות צ\'אט וסקרים.'},
-  {id:'mine',ico:'🎯',title:'רק מה שקשור אליי',desc:'רק התראות על אירועים שהמשפחה שלכם משתתפת בהם.'},
+  {id:'all',ico:'🔔',title:'הכל',desc:'כל פעילות — כולל צ\'אט וסקרים'},
+  {id:'important',ico:'📌',title:'רק עדכונים חשובים',desc:'אירועים, הוצאות וימי הולדת — בלי צ\'אט וסקרים'},
+  {id:'mine',ico:'🎯',title:'רק מה שקשור אליי',desc:'רק אירועים שהמשפחה שלכם משתתפת בהם'},
 ];
+// A labelled on/off switch row (notification settings).
+const _npSwitch=(checked,onchange,title,sub='')=>`<label class="np-row"><span class="np-row-t">${title}${sub?`<small>${sub}</small>`:''}</span><span class="np-sw"><input type="checkbox" ${checked?'checked':''} onchange="${onchange}"><span></span></span></label>`;
 function openNotifPrefModal(){
   const modal=document.getElementById('notifPrefModal');
   if(!modal){alert('התראות פעילות. לביטול — הגדרות האתר בסרגל הכתובת.');return;}
@@ -1474,16 +1476,16 @@ function renderNotifPrefModal(){
   // The email section is rebuilt as part of the same innerHTML write (not a
   // pre-existing child) — a separate write would wipe out a static child
   // element with an id, since this replaces the whole container each time.
-  el.innerHTML=NOTIF_PREFS.map(p=>`
-    <button onclick="saveNotifPref('${p.id}')" style="width:100%;text-align:right;display:block;padding:12px 14px;margin-bottom:10px;border-radius:var(--r2);border:1.5px solid ${p.id===cur?'var(--blue-mid)':'var(--border)'};background:var(--surface2);cursor:pointer;font-family:var(--font)">
-      <div style="font-size:14px;font-weight:700;color:var(--text)">${p.ico} ${p.title}${p.id===cur?' ✓':''}</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:4px;line-height:1.5">${esc(p.desc)}</div>
-    </button>`).join('')
-    +(_isAdminPage()?'':`<label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:4px 2px 2px">
-      <input type="checkbox" ${localStorage.getItem('notifMoney')==='1'?'checked':''} onchange="saveNotifMoney(this.checked)" style="margin-top:3px">
-      <span><span style="font-size:13px;font-weight:700;color:var(--text)">💰 גם תנועות כסף של משפחות אחרות</span>
-      <span style="display:block;font-size:11px;color:var(--text2);line-height:1.5;margin-top:2px">פוש על הפקדות ותשלומים לקופות מטרה, ועל העברות מהקופה למשפחה או לארנק. על קופות של אירועים שאתם משתתפים בהם תקבלו ממילא.</span></span>
-    </label>`)
+  el.innerHTML=`<div class="np-sec">
+      <div class="np-head"><span style="font-size:20px">📱</span><div class="np-head-t"><div class="np-title">התראות במכשיר הזה</div><div class="np-sub">מה יקפוץ בטלפון או במחשב הזה</div></div></div>
+      <div class="np-body">
+        ${NOTIF_PREFS.map(p=>`<button type="button" class="np-opt${p.id===cur?' on':''}" onclick="saveNotifPref('${p.id}')" aria-pressed="${p.id===cur}">
+          <span class="np-radio"></span>
+          <span class="np-opt-t"><span class="np-opt-title">${p.ico} ${p.title}</span><span class="np-opt-desc" style="display:block">${esc(p.desc)}</span></span>
+        </button>`).join('')}
+        ${_isAdminPage()?'':`<div class="np-sep"></div>`+_npSwitch(localStorage.getItem('notifMoney')==='1','saveNotifMoney(this.checked)','💰 גם תנועות כסף של משפחות אחרות','הפקדות ותשלומים בקופות מטרה והעברות מהן')}
+      </div>
+    </div>`
     +'<div id="notifEmailSection"></div>';
   renderNotifEmailSection();
 }
@@ -1518,7 +1520,7 @@ const NOTIF_EMAIL_CATS=[
   {id:'event',ico:'📅',label:'אירוע חדש או סגירת אירוע'},
   {id:'goalFund',ico:'🎯',label:'קופה חדשה למטרה'},
   {id:'siteUpdate',ico:'🆕',label:'עדכון או תכונה חדשה באתר'},
-  {id:'money',ico:'💰',label:'תנועות כסף בקופות (הפקדות, תשלומים והעברות)',def:false},
+  {id:'money',ico:'💰',label:'תנועות כסף בקופות',def:false},
 ];
 // Kosher-phone spoken calls (api/_lib/yemot.js, PHONE_KINDS there): a short
 // list, since every one rings. Closing an event and money leaving a fund
@@ -1564,27 +1566,25 @@ function renderNotifEmailSection(){
   const scopes=pref?.scopes||{};
   // Older prefs have no `push` key — they were always email-instead-of-push.
   const pushOn=pref?.push===true;
-  el.innerHTML=`<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
-    <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-      <input type="checkbox" ${on?'checked':''} onchange="toggleNotifEmailMode(this.checked)">
-      <span style="font-size:13px;font-weight:700;color:var(--text)">📧 קבל התראות גם במייל${myEmail?' — '+esc(myEmail):''}</span>
+  el.innerHTML=`<div class="np-sec">
+    <label class="np-head" style="cursor:pointer"><span style="font-size:20px">📧</span>
+      <span class="np-head-t"><span class="np-title" style="display:block">התראות במייל</span><span class="np-sub" style="display:block">${myEmail?esc(myEmail):'לכתובת המייל שלכם'}</span></span>
+      <span class="np-sw"><input type="checkbox" ${on?'checked':''} onchange="toggleNotifEmailMode(this.checked)"><span></span></span>
     </label>
-    <div style="font-size:11px;color:var(--text2);margin:4px 0 10px;line-height:1.5">תקבלו במייל את מה שמסומן למטה. ליד קטגוריות שקשורות לאירוע ספציפי אפשר גם לבחור "הכל" או "רק שלי". ההגדרה חלה רק על הכתובת שלכם${myEmail?' ('+esc(myEmail)+')':''} — לא על שאר בני המשפחה.</div>
-    <div style="display:${on?'flex':'none'};flex-direction:column;gap:8px">
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text);padding-bottom:8px;border-bottom:1px dashed var(--border)">
-        <input type="checkbox" ${pushOn?'':'checked'} onchange="toggleNotifEmailPush(!this.checked)">
-        <span style="flex:1">🔕 רק מייל — בלי פושים במכשירים של הכתובת הזו</span>
-      </label>
+    ${on?`<div class="np-body">
+      <div class="np-label">מה לשלוח במייל</div>
       ${NOTIF_EMAIL_CATS.map(c=>{
-        const scoped=NOTIF_EMAIL_SCOPED_CATS.has(c.id);
+        const catOn=_notifEmailCatOn(pref,c.id);
+        const scoped=NOTIF_EMAIL_SCOPED_CATS.has(c.id)&&catOn;
         const scope=scopes[c.id]==='mine'?'mine':'all';
-        return`<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text)">
-          <input type="checkbox" ${_notifEmailCatOn(pref,c.id)?'checked':''} onchange="toggleNotifEmailCat('${c.id}',this.checked)">
-          <span style="flex:1">${c.ico} ${c.label}</span>
-          ${scoped?`<button type="button" onclick="event.preventDefault();event.stopPropagation();toggleNotifEmailScope('${c.id}')" style="border:1.5px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;font-family:var(--font);cursor:pointer;flex-shrink:0;background:${scope==='mine'?'var(--blue-bg)':'var(--surface2)'};color:${scope==='mine'?'var(--blue)':'var(--text2)'}">${scope==='mine'?'רק שלי':'הכל'}</button>`:''}
-        </label>`;
+        return _npSwitch(catOn,`toggleNotifEmailCat('${c.id}',this.checked)`,`${c.ico} ${c.label}`)
+          +(scoped?`<div style="display:flex;align-items:center;gap:8px;margin:-4px 26px 2px 0;font-size:11px;color:var(--text2)">על אילו ${c.id==='expense'?'הוצאות':'אירועים'}:
+            <span class="np-seg" role="group"><button type="button" class="${scope==='all'?'on':''}" onclick="setNotifEmailScope('${c.id}','all')">הכל</button><button type="button" class="${scope==='mine'?'on':''}" onclick="setNotifEmailScope('${c.id}','mine')">רק שלנו</button></span></div>`:'');
       }).join('')}
-    </div>
+      <div class="np-sep"></div>
+      ${_npSwitch(pushOn,'toggleNotifEmailPush(this.checked)','📱 להמשיך לקבל גם פוש','כבוי = רק מייל, בלי פושים במכשירים של הכתובת הזו')}
+      <div class="np-foot">ההגדרה חלה רק על הכתובת שלכם, לא על שאר בני המשפחה.</div>
+    </div>`:''}
   </div>`;
 }
 function toggleNotifEmailMode(on){
@@ -1614,7 +1614,7 @@ function toggleNotifEmailCat(catId,on){
   const slot=_myEmailSlot();
   const pref=(f&&slot)?f.notifEmailPref?.[slot]:null;if(!pref)return;
   pref.cats[catId]=on;
-  save();
+  save();renderNotifEmailSection();
   showToast('✓ ההעדפה נשמרה',1500);
 }
 function toggleNotifEmailScope(catId){
@@ -1624,6 +1624,16 @@ function toggleNotifEmailScope(catId){
   if(!pref.scopes)pref.scopes={};
   const cur=pref.scopes[catId]==='mine'?'mine':'all';
   pref.scopes[catId]=cur==='mine'?'all':'mine';
+  save();renderNotifEmailSection();
+  showToast('✓ ההעדפה נשמרה',1500);
+}
+function setNotifEmailScope(catId,scope){
+  const fid=_myFamId();const f=fid!=null?getFam(fid):null;
+  const slot=_myEmailSlot();
+  const pref=(f&&slot)?f.notifEmailPref?.[slot]:null;if(!pref)return;
+  if(!pref.scopes)pref.scopes={};
+  if((pref.scopes[catId]==='mine'?'mine':'all')===scope)return;
+  pref.scopes[catId]=scope;
   save();renderNotifEmailSection();
   showToast('✓ ההעדפה נשמרה',1500);
 }
