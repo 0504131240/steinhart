@@ -1140,7 +1140,7 @@ function showSyncStatus(msg,hideAfter){
 
 function render(){
   applyEditMode();
-  const fns=[renderHome,renderMetrics,renderOpenList,renderArchive,renderFamilies,renderFund,renderGoalFunds,renderFamilyHome,renderClaimsBanner,renderVisitLog,renderNotifCenterBadge,renderPollBanner,renderFamilyTreeIfOpen,renderArchiveEvDetailIfOpen];
+  const fns=[renderHome,renderMetrics,renderOpenList,renderArchive,renderFamilies,renderFund,renderGoalFunds,renderFamilyHome,renderClaimsBanner,renderVisitLog,renderNotifCenterBadge,renderPollBanner,renderFamilyTreeIfOpen,renderArchiveEvDetailIfOpen,renderHomeTiles];
   fns.forEach(fn=>{try{fn();}catch(e){console.error(fn.name,e);}});
   const debt=calcDebt();
   const open=events.filter(e=>e.open).length;
@@ -7025,9 +7025,16 @@ function _enterPayShell(){
   document.getElementById('mn-home').classList.remove('mn-active');
   document.getElementById('mn-pay').classList.add('mn-active');
 }
+// Home tile under "תשלומים": how many events are open.
+function renderHomeTiles(){
+  const el=document.getElementById('homeTilePaySub');if(!el)return;
+  const n=events.filter(e=>e.open).length;
+  el.textContent=n?n+(n===1?' אירוע פתוח':' אירועים פתוחים'):'';
+}
 function handleHash(){
   const h=(window.location.hash||'').replace('#','');
   if(!h||h==='home'){goTab('home',document.getElementById('nb-home'),true);return;}
+  if(h==='recipes'){if(window.openRecipesOverlay)openRecipesOverlay();return;}
   if(h==='fund'){_enterPayShell();openFundDetail();return;}
   const tabMap={events:'nb-events',families:'nb-families'};
   if(tabMap[h]){_enterPayShell();goTab(h,document.getElementById(tabMap[h]),true);return;}
