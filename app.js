@@ -1605,7 +1605,9 @@ function renderNotifPrefModal(){
   const emailStatus=emailPref?NOTIF_EMAIL_CATS.filter(c=>_notifEmailCatOn(emailPref,c.id)).length+' נבחרו':'כבוי';
   const phonesOn=phones.filter(x=>!x.p.off).length;
   const phoneStatus=!phones.length?'אין מספר':!phonesOn?'כבוי':phonesOn===1?'פעיל':phonesOn+' פעילים';
-  const tabs=[['push','📱','פוש',pushStatus],['email','📧','מייל',emailStatus],['phone','📞','פלאפון',phoneStatus]];
+  // No kosher-phone calls in this family (everyone has a smartphone) — push and email only.
+  if(_npTab==='phone')_npTab='push';
+  const tabs=[['push','📱','פוש',pushStatus],['email','📧','מייל',emailStatus]];
   el.innerHTML=`<div class="np-tabs" role="tablist">${tabs.map(([id,ico,label,st])=>`<button type="button" role="tab" aria-selected="${_npTab===id}" class="np-tab${_npTab===id?' on':''}" onclick="setNpTab('${id}')"><span class="np-tab-ico">${ico}</span><span class="np-tab-l">${label}</span><span class="np-tab-s">${st}</span></button>`).join('')}</div>
     <div class="np-pane">${_npTab==='email'?_npEmailPane(f,slot):_npTab==='phone'?_npPhonePane(f,phones):_npPushPane(f,slot,emailPref)}</div>`;
 }
@@ -1840,7 +1842,8 @@ async function renderNotifDevicesModal(){
         <div style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.6">${chosen.length?esc(chosen.join(' · ')):'לא סימנו אף התראה'}</div>
       </div>`;
     }).join(''):'<div class="empty" style="padding:20px 0"><span class="empty-ico">📞</span>אף אחד לא רשום לשיחות לטלפון כשר</div>';
-    const tabs=[['push','🔔 פוש',rows.length],['email','📧 מייל',emailRows.length],['phone','📞 שיחה',phoneRows.length]];
+    if(_notifRegTab==='phone')_notifRegTab='push';
+    const tabs=[['push','🔔 פוש',rows.length],['email','📧 מייל',emailRows.length]];
     const tabsHtml=`<div style="display:flex;gap:6px;margin-bottom:12px">${tabs.map(([id,label,n])=>{
       const on=_notifRegTab===id;
       return`<button type="button" onclick="setNotifRegTab('${id}')" style="flex:1;padding:8px 4px;border-radius:20px;border:1.5px solid ${on?'var(--blue-mid)':'var(--border)'};background:${on?'var(--blue-mid)':'transparent'};color:${on?'#fff':'var(--text2)'};font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">${label} <span style="opacity:.8">(${n})</span></button>`;
@@ -5649,6 +5652,7 @@ function _parentPhone(f,slot){
   return f.kosherPhones?.[slot]||(slot===1&&f.kosherPhone?{phone:f.kosherPhone,cats:f.phonePref?.cats||{}}:null);
 }
 function _renderPersonPhoneSection(f,slot){
+  slot=null; // kosher-phone sign-up is off in this family — the field never shows
   const anchor=document.getElementById('personEmailWrap');if(!anchor)return;
   let el=document.getElementById('personPhoneSection');
   if(!el){el=document.createElement('div');el.id='personPhoneSection';el.style.marginBottom='14px';anchor.after(el);}
