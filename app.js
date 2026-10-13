@@ -2204,6 +2204,44 @@ function _applyCalToggleStyle(){
   lBtn.style.background=!calHebrew?'var(--blue-mid)':'transparent';
   lBtn.style.color=!calHebrew?'#fff':'var(--text2)';
 }
+// Tefillin-laying day: one Hebrew month before a boy's bar mitzvah, same day
+// of the month (27 Kislev → 27 Cheshvan; a 30th that the earlier month lacks
+// → its last day), moved to the next day while it falls on Shabbat or a Yom
+// Tov (Israel). Cached — the date search walks the Hebrew calendar.
+const _tefCache={};
+const _HP_D=new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{day:'numeric'}),_HP_M=new Intl.DateTimeFormat('he-IL-u-ca-hebrew',{month:'long'}),_HP_Y=new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{year:'numeric'});
+function _hebParts(d){return{d:parseInt(_HP_D.format(d)),m:_HP_M.format(d),y:parseInt(_HP_Y.format(d))};}
+function _isYomTov(d){
+  const h=_hebParts(d);
+  return h.m==='תשרי'&&[1,2,10,15,22].includes(h.d)||h.m==='ניסן'&&[15,21].includes(h.d)||h.m==='סיון'&&h.d===6;
+}
+// Born in Adar of a regular year (or Adar II) → bar mitzvah in Adar II of a
+// leap year; born in Adar I → Adar I.
+function _bmMonthEq(m,born){
+  if(!born.startsWith('אדר'))return m===born;
+  return m==='אדר'||(born==='אדר א׳'?m==='אדר א׳':m==='אדר ב׳');
+}
+function _tefillinDate(b){
+  if(b.gender!=='boy'||!b.hebYear||!b.hebDay||!b.hebMonth)return null;
+  const key=b.hebYear+'|'+b.hebMonth+'|'+b.hebDay;
+  if(key in _tefCache)return _tefCache[key];
+  const hy=b.hebYear+13;
+  let bm=null;const cur=new Date(hy-3761,7,15);
+  for(let i=0;i<420&&!bm;i++){const h=_hebParts(cur);if(h.y===hy&&_bmMonthEq(h.m,b.hebMonth)&&(h.d===b.hebDay||(b.hebDay===30&&h.d===29&&_hebParts(new Date(cur.getTime()+864e5)).d===1)))bm=new Date(cur);cur.setDate(cur.getDate()+1);}
+  if(!bm)return _tefCache[key]=null;
+  const bmMonth=_hebParts(bm).m;
+  const p=new Date(bm);
+  do{p.setDate(p.getDate()-1);}while(_hebParts(p).m===bmMonth);
+  while(_hebParts(p).d>b.hebDay)p.setDate(p.getDate()-1);
+  while(p.getDay()===6||_isYomTov(p))p.setDate(p.getDate()+1);
+  const ds=p.getFullYear()+'-'+String(p.getMonth()+1).padStart(2,'0')+'-'+String(p.getDate()).padStart(2,'0');
+  return _tefCache[key]=ds;
+}
+function _tefillinByDate(bdays){
+  const m={};
+  bdays.forEach(b=>{const ds=_tefillinDate(b);if(ds)(m[ds]=m[ds]||[]).push(b);});
+  return m;
+}
 function renderCalendar(){
   const gridEl=document.getElementById('calGrid');
   const titleEl=document.getElementById('calTitle');
@@ -2212,6 +2250,8 @@ function renderCalendar(){
   const todayStr=new Date().toISOString().slice(0,10);
   const _allBdays=allBirthdays();
   const bdayByDate={};
+  const _tefAll=_tefillinByDate(_allBdays.filter(b=>b.kind==='birthday'));
+  const tefByDate={};
   let html='';
   let hebDays=null;
   if(calHebrew){
@@ -2233,12 +2273,13 @@ function renderCalendar(){
       const evOnDay=calItems.filter(c=>c.date===ds);
       const bdayOnDay=_allBdays.filter(b=>b.hebDay===hebDayNumInt&&_hebMonthEq(b.hebMonth,hebMonthName));
       if(bdayOnDay.length)bdayByDate[ds]=bdayOnDay;
-      const hasEv=evOnDay.length>0;const hasBday=bdayOnDay.length>0;
-      const cls=['fh-cal-day',isToday?'today':'',isSel?'sel':'',hasEv?'has-ev':_calDayOccClass(bdayOnDay)].filter(Boolean).join(' ');
+      const tefOnDay=_tefAll[ds]||[];if(tefOnDay.length)tefByDate[ds]=tefOnDay;
+      const hasEv=evOnDay.length>0;const hasBday=bdayOnDay.length>0||tefOnDay.length>0;
+      const cls=['fh-cal-day',isToday?'today':'',isSel?'sel':'',hasEv?'has-ev':(_calDayOccClass(bdayOnDay)||(tefOnDay.length?'has-bday':''))].filter(Boolean).join(' ');
       html+=`<div class="${cls}" onclick="selectCalDay('${ds}')">
         <span style="font-size:10px;line-height:1">${label}</span>
         ${hasEv?`<span class="fh-cal-day-ev">${evOnDay.map(c=>c.title.slice(0,5)).join(',')}</span>`:''}
-        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(_bmLabel(b,dayHebYear)?_bmIcon(_bmLabel(b,dayHebYear)):b.kind==='anniversary'?'💍':b.kind==='yahrzeit'?'🕯️':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
+        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${[...tefOnDay.map(b=>TEFILLIN_SVG+b.name.slice(0,4)),...bdayOnDay.map(b=>(_bmLabel(b,dayHebYear)?_bmIcon(_bmLabel(b,dayHebYear)):b.kind==='anniversary'?'💍':b.kind==='yahrzeit'?'🕯️':'🎂')+b.name.slice(0,4))].join(',')}</span>`:''}
       </div>`;
     }
   } else {
@@ -2258,17 +2299,18 @@ function renderCalendar(){
       const evOnDay=calItems.filter(c=>c.date===ds);
       const bdayOnDay=_allBdays.filter(b=>b.hebDay===hebDayNumInt&&_hebMonthEq(b.hebMonth,hebMonthName));
       if(bdayOnDay.length)bdayByDate[ds]=bdayOnDay;
-      const hasEv=evOnDay.length>0;const hasBday=bdayOnDay.length>0;
-      const cls=['fh-cal-day',isToday?'today':'',isSel?'sel':'',hasEv?'has-ev':_calDayOccClass(bdayOnDay)].filter(Boolean).join(' ');
+      const tefOnDay=_tefAll[ds]||[];if(tefOnDay.length)tefByDate[ds]=tefOnDay;
+      const hasEv=evOnDay.length>0;const hasBday=bdayOnDay.length>0||tefOnDay.length>0;
+      const cls=['fh-cal-day',isToday?'today':'',isSel?'sel':'',hasEv?'has-ev':(_calDayOccClass(bdayOnDay)||(tefOnDay.length?'has-bday':''))].filter(Boolean).join(' ');
       html+=`<div class="${cls}" onclick="selectCalDay('${ds}')">
         <span style="font-size:12px;line-height:1">${d}</span>
         ${hasEv?`<span class="fh-cal-day-ev">${evOnDay.map(c=>c.title.slice(0,5)).join(',')}</span>`:''}
-        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${bdayOnDay.map(b=>(_bmLabel(b,dayHebYear)?_bmIcon(_bmLabel(b,dayHebYear)):b.kind==='anniversary'?'💍':b.kind==='yahrzeit'?'🕯️':'🎂')+b.name.slice(0,4)).join(',')}</span>`:''}
+        ${!hasEv&&hasBday?`<span class="fh-cal-day-ev" style="color:#c0392b">${[...tefOnDay.map(b=>TEFILLIN_SVG+b.name.slice(0,4)),...bdayOnDay.map(b=>(_bmLabel(b,dayHebYear)?_bmIcon(_bmLabel(b,dayHebYear)):b.kind==='anniversary'?'💍':b.kind==='yahrzeit'?'🕯️':'🎂')+b.name.slice(0,4))].join(',')}</span>`:''}
       </div>`;
     }
   }
   gridEl.innerHTML=html;
-  renderCalEvList(hebDays,bdayByDate);
+  renderCalEvList(hebDays,bdayByDate,tefByDate);
 }
 
 function selectCalDay(ds){
@@ -2276,7 +2318,7 @@ function selectCalDay(ds){
   renderCalendar();
 }
 
-function renderCalEvList(hebDays,bdayByDate){
+function renderCalEvList(hebDays,bdayByDate,tefByDate){
   const el=document.getElementById('calEvList');if(!el)return;
   bdayByDate=bdayByDate||{};
   let dateFilter;
@@ -2292,7 +2334,9 @@ function renderCalEvList(hebDays,bdayByDate){
   const evList=calItems.filter(c=>dateFilter(c.date)).map(c=>({type:'ev',date:c.date,item:c}));
   const bdayList=Object.entries(bdayByDate).filter(([ds])=>dateFilter(ds))
     .flatMap(([ds,bdays])=>bdays.map(b=>({type:'bday',date:ds,item:b})));
-  const list=[...evList,...bdayList].sort((a,b)=>a.date.localeCompare(b.date));
+  const tefList=Object.entries(tefByDate||{}).filter(([ds])=>dateFilter(ds))
+    .flatMap(([ds,ks])=>ks.map(b=>({type:'tefillin',date:ds,item:b})));
+  const list=[...evList,...tefList,...bdayList].sort((a,b)=>a.date.localeCompare(b.date));
   if(!list.length){el.innerHTML='';return;}
   el.innerHTML=list.map(({type,date,item})=>{
     const d=new Date(date+'T00:00:00');
@@ -2303,6 +2347,15 @@ function renderCalEvList(hebDays,bdayByDate){
     const lbl=calHebrew
       ?HEB_DAY_NUM[parseInt(latDayFmt.format(d))]+' ב'+monthFmt.format(d)+' '+toHebrewYear(hebYNum)
       :d.toLocaleDateString('he-IL',{day:'numeric',month:'long'});
+    if(type==='tefillin'){
+      return`<div class="fh-cal-ev">
+        <div class="fh-cal-ev-dot" style="background:#2b2b2b"></div>
+        <div class="fh-cal-ev-info">
+          <div class="fh-cal-ev-name">${TEFILLIN_SVG} ${esc(item.name)} — הנחת תפילין</div>
+          <div class="fh-cal-ev-date">${lbl} · חודש לפני הבר מצווה</div>
+        </div>
+      </div>`;
+    }
     if(type==='bday'){
       const isAnniv=item.kind==='anniversary';
       const isYahrzeit=item.kind==='yahrzeit';
