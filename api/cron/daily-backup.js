@@ -16,7 +16,7 @@
 // day-of-week where relevant, is the only way that's actually reliable on
 // this plan.
 const { getDb, getMessaging, dedupeTokenDocs, notifPrefAllows, isShabbatNow, isYomTovNow, sendViaEmailJS, notifEmailHtml } = require('../_lib/firebaseAdmin');
-const { allBirthdays, ageLabel, bmLabel } = require('../_lib/birthdayCalc');
+const { allBirthdays, occasionText } = require('../_lib/birthdayCalc');
 const { sendWeeklyDebtReminders } = require('./weekly-debt-reminder');
 const { flushPhoneQueue } = require('../_lib/yemot');
 
@@ -86,28 +86,7 @@ async function sendBirthdayReminders(db, data) {
     const todays = all.filter(x => x.hebDay === hd && _hebMonthEq(x.hebMonth, hm));
     if (!todays.length) continue;
     occasions += todays.length;
-    // Title and text of a single occasion, as before.
-    const one = b => {
-      const isAnniv = b.kind === 'anniversary', isYahrzeit = b.kind === 'yahrzeit';
-      const ageLbl = ageLabel(b, occHebYear), bm = bmLabel(b, occHebYear);
-      const title = bm ? (i === 0 ? '📜 ' + bm + ' היום!' : '📜 ' + bm + ' מחר')
-        : isYahrzeit ? (i === 0 ? '🕯️ יארצייט היום' : '🕯️ יארצייט מחר')
-        : isAnniv ? (i === 0 ? '💍 יום נישואין היום!' : '💍 יום נישואין מחר')
-        : (i === 0 ? '🎂 יום הולדת היום!' : '🎂 יום הולדת מחר');
-      const body = bm ? (i === 0 ? 'מזל טוב ל' + b.name + ageLbl + '! היום ה' + bm + ' שלו/ה' : 'מחר ה' + bm + ' של ' + b.name + ageLbl)
-        : isYahrzeit ? (i === 0 ? 'היום היארצייט של ' + b.name + ageLbl : 'מחר היארצייט של ' + b.name + ageLbl)
-        : isAnniv ? (i === 0 ? 'מזל טוב למשפחת ' + b.name + ageLbl + '!' : 'מחר יום הנישואין של משפחת ' + b.name + ageLbl)
-        : (i === 0 ? 'יום הולדת שמח ל' + b.name + ageLbl + '!' : 'מחר יום ההולדת של ' + b.name + ageLbl);
-      return { title, body };
-    };
-    // Several occasions: one title, each occasion's line joined in one text.
-    const text = list => {
-      if (list.length === 1) return one(list[0]);
-      const parts = list.map(one);
-      const allBd = list.every(b => b.kind !== 'anniversary' && b.kind !== 'yahrzeit' && !bmLabel(b, occHebYear));
-      const title = allBd ? (i === 0 ? '🎂 ימי הולדת היום!' : '🎂 ימי הולדת מחר') : (i === 0 ? '🎉 שמחות היום' : '🎉 שמחות מחר');
-      return { title, body: parts.map(p => p.body).join(' · ') };
-    };
+    const text = list => occasionText(list, i, occHebYear);
 
     for (const [page, allDocs] of Object.entries(groups)) {
       // A family device's own notifPref only filters family-page pushes — the
