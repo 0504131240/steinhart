@@ -2115,6 +2115,7 @@ function setCalMode(hebrew){
   renderCalendar();
 }
 
+function _localDs(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 function getHebMonthDays(refDate){
   const mFmt=new Intl.DateTimeFormat('he-IL-u-ca-hebrew',{month:'long'});
   const target=mFmt.format(refDate);
@@ -2247,7 +2248,7 @@ function renderCalendar(){
   const titleEl=document.getElementById('calTitle');
   if(!gridEl)return;
   _applyCalToggleStyle();
-  const todayStr=new Date().toISOString().slice(0,10);
+  const todayStr=_localDs(new Date());
   const _allBdays=allBirthdays();
   const bdayByDate={};
   const _tefAll=_tefillinByDate(_allBdays.filter(b=>b.kind==='birthday'));
@@ -2263,7 +2264,7 @@ function renderCalendar(){
     html=HEB_DAYS_SHORT.map(d=>`<div class="fh-cal-dow">${d}</div>`).join('');
     for(let i=0;i<first.getDay();i++)html+=`<div class="fh-cal-day other-m empty"></div>`;
     for(const dayDate of hebDays){
-      const ds=dayDate.toISOString().slice(0,10);
+      const ds=_localDs(dayDate);
       const hebDayNumInt=parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{day:'numeric'}).format(dayDate));
       const label=HEB_DAY_NUM[hebDayNumInt]||String(hebDayNumInt);
       const hebMonthName=new Intl.DateTimeFormat('he-IL-u-ca-hebrew',{month:'long'}).format(dayDate);
@@ -2325,7 +2326,7 @@ function renderCalEvList(hebDays,bdayByDate,tefByDate){
   if(calSelDay){
     dateFilter=ds=>ds===calSelDay;
   } else if(hebDays){
-    const ds=new Set(hebDays.map(d=>d.toISOString().slice(0,10)));
+    const ds=new Set(hebDays.map(_localDs));
     dateFilter=d=>ds.has(d);
   } else {
     const monthStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}`;
@@ -6028,11 +6029,11 @@ function renderKidDatePicker(){
   const hebMonth=new Intl.DateTimeFormat('he-IL-u-ca-hebrew',{month:'long'}).format(first);
   const hebYearNum=parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{year:'numeric'}).format(first));
   document.getElementById('kidPickerTitle').textContent=hebMonth+' '+toHebrewYear(hebYearNum);
-  const todayStr=new Date().toISOString().slice(0,10);
+  const todayStr=_localDs(new Date());
   let html=HEB_DAYS_SHORT.map(d=>`<div class="fh-cal-dow">${d}</div>`).join('');
   for(let i=0;i<first.getDay();i++)html+=`<div class="fh-cal-day other-m empty"></div>`;
   days.forEach(dayDate=>{
-    const ds=dayDate.toISOString().slice(0,10);
+    const ds=_localDs(dayDate);
     const hebDayNumInt=parseInt(new Intl.DateTimeFormat('he-IL-u-ca-hebrew-nu-latn',{day:'numeric'}).format(dayDate));
     const label=HEB_DAY_NUM[hebDayNumInt]||String(hebDayNumInt);
     const isToday=ds===todayStr;
